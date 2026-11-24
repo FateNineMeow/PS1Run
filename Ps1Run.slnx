@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Ps1Run.Core/Ps1Run.Core.csproj" />
+  <Project Path="Ps1Run.App/Ps1Run.App.csproj" />
+  <Project Path="Ps1Run.Core.Tests/Ps1Run.Core.Tests.csproj" />
+</Solution>

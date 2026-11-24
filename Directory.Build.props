@@ -1,0 +1,36 @@
+<Project>
+  <!--
+    公共构建属性（对应 wiki 03 项目结构 §5.1、09 评估 §4.2）
+    - 双目标：net48 + net11.0-windows
+    - 输出集中到 Ps1Run\Build\<TFM>\，避免两个目标互相覆盖
+      说明：wiki 文档写的是仓库级 Build 目录，此处收敛在工程根内，
+            以免构建时向工程目录之外写入文件。
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>net48;net11.0-windows</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!--
+      SDK 会在 OutputPath 与 IntermediateOutputPath 后自动追加 $(TargetFramework)。
+      这里只指定 Build 根目录，最终得到 Build\net48\ 与 Build\net11.0-windows\；
+      同时保留中间目录按 TFM 隔离，避免双目标互相覆盖引用程序集。
+    -->
+    <OutputPath>$(MSBuildThisFileDirectory)Build\</OutputPath>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!--
+    程序版本：统一在此维护，App / Core / Tests 三个工程共用。
+    版本号变化只需改 Version 一处，AssemblyVersion / FileVersion / InformationalVersion
+    会随之派生（这里显式写出，避免 SDK 把 InformationalVersion 追加源码版本后缀）。
+  -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <InformationalVersion>0.1.0</InformationalVersion>
+    <!-- 不把源码提交号拼到 ProductVersion 后面，资源管理器里显示干净的 0.1.0 -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>

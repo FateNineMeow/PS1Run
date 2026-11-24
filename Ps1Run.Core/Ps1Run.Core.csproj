@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 无 UI 内核：不引用任何 WPF/WinForms 类型（wiki 03 §4） -->
+  <PropertyGroup>
+    <AssemblyName>Ps1Run.Core</AssemblyName>
+    <RootNamespace>Ps1Run.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

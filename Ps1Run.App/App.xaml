@@ -1,0 +1,19 @@
+<Application x:Class="Ps1Run.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnLastWindowClose">
+    <!--
+        刻意不设置 StartupUri：启动行为完全由 App.xaml.cs 按参数决定
+        （有脚本 → 无窗口直通；无参数 → 主界面），见 wiki 05 §3。
+
+        这里合并的是「设计期默认主题」：运行时会由 ThemeManager 按 config.json
+        换成 Light 或 Dark（同名键整体替换），所以两个字典的键名必须完全一致。
+    -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Light.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

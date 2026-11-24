@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- 单测只跑一个目标框架；覆盖 Directory.Build.props 注入的双目标列表 -->
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+    <AssemblyName>Ps1Run.Core.Tests</AssemblyName>
+    <RootNamespace>Ps1Run.Core.Tests</RootNamespace>
+    <OutputPath>bin\$(Configuration)\Tests\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ps1Run.Core\Ps1Run.Core.csproj" />
+  </ItemGroup>
+</Project>

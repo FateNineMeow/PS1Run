@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    WPF 外壳（wiki 03 §3）：只负责窗口、绑定与进程生命周期，
+    所有可测逻辑都在 Ps1Run.Core。
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Ps1Run</AssemblyName>
+    <RootNamespace>Ps1Run.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+    <!-- 软件 logo：exe 在资源管理器/任务栏显示的图标（多尺寸 16~256） -->
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net48'">
+    <!-- net48 下引用的程序集需要绑定重定向（wiki 09 §5） -->
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Ps1Run.Core\Ps1Run.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 窗口图标：作为 WPF 托管资源嵌入，XAML 里以 pack://application:,,,/icon.ico 引用（绝对路径，避免被解析为 Views/icon.ico） -->
+    <Resource Include="icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      随程序发布一份英文语言包，lang\zh-cn.json 由程序首次运行时按内置中文生成。
+      用户可把自己的 xx.json 丢进 lang\ 目录，界面下拉框会自动发现。
+    -->
+    <None Update="lang\en-us.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,224 @@
+<Window x:Class="Ps1Run.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:Ps1Run.App.Localization"
+        xmlns:d="clr-namespace:Ps1Run.App.Localization"
+        Title="{loc:T App.Title}"
+        Icon="pack://application:,,,/icon.ico"
+        Height="840" Width="900" MinHeight="560" MinWidth="760"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource App.WindowBackground}"
+        Foreground="{DynamicResource App.ForegroundPrimary}">
+    <Window.Resources>
+        <!-- 语言项：显式模板，保证折叠态与下拉项都显示语言名而不是 ToString() -->
+        <DataTemplate x:Key="LanguageItemTemplate">
+            <TextBlock Text="{Binding DisplayName}" />
+        </DataTemplate>
+    </Window.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="PS1Run" FontSize="26" FontWeight="SemiBold" />
+            <TextBlock Text="{loc:T App.Subtitle}" d:DesignText.Text="决定双击 .ps1 时交给编辑器还是解释器"
+                       Foreground="{DynamicResource App.ForegroundSecondary}" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <GroupBox Grid.Row="1" Header="{loc:T Group.RunMode}" Padding="12" Margin="0,0,0,12">
+            <StackPanel>
+                <ComboBox SelectedIndex="{Binding RunModeIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="{loc:T RunMode.Run}" d:DesignText.Text="执行（直接运行脚本）" />
+                    <ComboBoxItem Content="{loc:T RunMode.Edit}" d:DesignText.Text="编辑（用编辑器打开）" />
+                    <ComboBoxItem Content="{loc:T RunMode.Ask}" d:DesignText.Text="选择（每次双击都弹窗，默认）" />
+                </ComboBox>
+                <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource App.ForegroundSecondary}" TextWrapping="Wrap"
+                           Text="{loc:T Hint.RunMode}" d:DesignText.Text="右键菜单的“运行 / 编辑”属显式意图，始终绕过“选择”。" />
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Grid.Row="2" Header="{loc:T Group.Executor}" Padding="12" Margin="0,0,0,12">
+            <StackPanel>
+                <ComboBox SelectedIndex="{Binding PolicyIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="{loc:T Policy.Ps5}" d:DesignText.Text="Windows PowerShell 5.1" />
+                    <ComboBoxItem Content="{loc:T Policy.Ps7}" d:DesignText.Text="PowerShell 7+" />
+                    <ComboBoxItem Content="{loc:T Policy.Auto}" d:DesignText.Text="自动（按脚本编码选择）" />
+                </ComboBox>
+                <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource App.ForegroundSecondary}" TextWrapping="Wrap"
+                           Text="{loc:T Hint.Executor}"
+                           d:DesignText.Text="自动模式：UTF-8 / UTF-16 交给 PS7，ANSI（GBK）交给 PS5。缺失时可在下方手动指定。" />
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:T Label.Ps5}" d:DesignText.Text="PS5.1"
+                               VerticalAlignment="Center" Margin="0,0,8,4" />
+                    <TextBox Grid.Row="0" Grid.Column="1" Margin="0,0,0,4"
+                             VerticalContentAlignment="Center"
+                             Text="{Binding CustomPs5Path, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button Grid.Row="0" Grid.Column="2" Content="{loc:T Button.Browse}" d:DesignText.Text="浏览…"
+                            Padding="12,4" Margin="8,0,0,4" Click="OnPickPs5Click" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:T Label.Ps7}" d:DesignText.Text="PS7+"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBox Grid.Row="1" Grid.Column="1"
+                             VerticalContentAlignment="Center"
+                             Text="{Binding CustomPs7Path, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button Grid.Row="1" Grid.Column="2" Content="{loc:T Button.Browse}" d:DesignText.Text="浏览…"
+                            Padding="12,4" Margin="8,0,0,0" Click="OnPickPs7Click" />
+                </Grid>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Grid.Row="3" Header="{loc:T Group.Editor}" Padding="12" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{loc:T Label.Editor}" d:DesignText.Text="编辑器"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBox Grid.Column="1" VerticalContentAlignment="Center"
+                         Text="{Binding CustomEditorPath, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="2" Content="{loc:T Button.Browse}" d:DesignText.Text="浏览…"
+                        Padding="12,4" Margin="8,0,0,0" Click="OnPickEditorClick" />
+            </Grid>
+        </GroupBox>
+
+        <!-- 一键探测单独成行，不与编辑器/操作按钮混排 -->
+        <GroupBox Grid.Row="4" Header="{loc:T Group.Detect}" Padding="12" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="{loc:T Button.Detect}"
+                        d:DesignText.Text="一键探测 PS5 / PS7 / 编辑程序" Padding="16,8" Click="OnAutoDetectClick" />
+                <TextBlock Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center"
+                           Foreground="{DynamicResource App.ForegroundMuted}" TextWrapping="Wrap"
+                           Text="{Binding DetectionText}" />
+            </Grid>
+        </GroupBox>
+
+        <!-- 外观、语言与日志（config.json） -->
+        <GroupBox Grid.Row="5" Header="{loc:T Group.Preferences}" Padding="12" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" MinWidth="104" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:T Label.Theme}" d:DesignText.Text="主题"
+                           VerticalAlignment="Center" Margin="0,0,12,8" />
+                <ComboBox Grid.Row="0" Grid.Column="1" Width="280" HorizontalAlignment="Left" Margin="0,0,0,8"
+                          SelectedIndex="{Binding ThemeIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="{loc:T Theme.Auto}" d:DesignText.Text="自动（跟随系统）" />
+                    <ComboBoxItem Content="{loc:T Theme.Light}" d:DesignText.Text="浅色" />
+                    <ComboBoxItem Content="{loc:T Theme.Dark}" d:DesignText.Text="深色" />
+                </ComboBox>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:T Label.Language}" d:DesignText.Text="语言"
+                           VerticalAlignment="Center" Margin="0,0,12,8" />
+                <ComboBox Grid.Row="1" Grid.Column="1" x:Name="LanguageCombo"
+                          Width="280" HorizontalAlignment="Left" Margin="0,0,0,8"
+                          ItemsSource="{Binding Languages}" ItemTemplate="{StaticResource LanguageItemTemplate}"
+                          SelectedIndex="{Binding LanguageIndex, Mode=TwoWay}" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:T Label.LogDays}" d:DesignText.Text="日志保留天数"
+                           VerticalAlignment="Center" Margin="0,0,12,8" />
+                <Grid Grid.Row="2" Grid.Column="1" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" Width="90" VerticalContentAlignment="Center"
+                             Text="{Binding LogDaysText, UpdateSourceTrigger=PropertyChanged}" />
+                    <Button Grid.Column="1" Content="{loc:T Button.PruneNow}" d:DesignText.Text="立即清理"
+                            Padding="12,4" Margin="8,0,0,0" Click="OnPruneNowClick" />
+                    <TextBlock Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource App.ForegroundSecondary}" TextWrapping="Wrap"
+                               Text="{loc:T Hint.LogDays}" d:DesignText.Text="每天首次运行自动清理更早的日志（1–365 天）。" />
+                </Grid>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:T Label.ConfigFile}" d:DesignText.Text="配置文件"
+                           VerticalAlignment="Center" Margin="0,0,12,0" />
+                <Grid Grid.Row="3" Grid.Column="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{Binding ConfigFilePath}" VerticalAlignment="Center"
+                               Foreground="{DynamicResource App.ForegroundSecondary}"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ConfigFilePath}" />
+                    <Button Grid.Column="1" Content="{loc:T Button.OpenConfig}" d:DesignText.Text="打开"
+                            Padding="12,4" Margin="8,0,0,0" Click="OnOpenConfigClick" />
+                </Grid>
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Grid.Row="6" Header="{loc:T Group.Diagnostics}" Padding="8">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{DynamicResource App.LogBackground}">
+                <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Margin="6"
+                           FontFamily="Consolas" FontSize="12" />
+            </ScrollViewer>
+        </GroupBox>
+
+        <!-- 所有操作按钮放在同一个 WrapPanel 中：窗口变窄时自动换行，不再叠加 -->
+        <GroupBox Grid.Row="7" Header="{loc:T Group.Actions}" Padding="12" Margin="0,12,0,0">
+            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Content="{loc:T Button.Save}" d:DesignText.Text="保存设置" Padding="16,6" Margin="0,4,8,4" Click="OnSaveClick" />
+                <Button Content="{loc:T Button.Refresh}" d:DesignText.Text="刷新状态" Padding="16,6" Margin="0,4,8,4" Click="OnRefreshClick" />
+                <Rectangle Width="1" Height="18" Fill="{DynamicResource App.Separator}" Margin="4,6,12,6"
+                           VerticalAlignment="Center" />
+                <Button Content="{loc:T Button.Register}" d:DesignText.Text="注册关联" Padding="16,6" Margin="0,4,8,4" Click="OnRegisterClick" />
+                <Button Content="{loc:T Button.Unregister}" d:DesignText.Text="注销关联" Padding="16,6" Margin="0,4,8,4" Click="OnUnregisterClick" />
+                <Button Content="{loc:T Button.OpenWith}" d:DesignText.Text="系统“打开方式”…" Padding="16,6" Margin="0,4,8,4"
+                        Click="OnOpenWithClick" />
+                <Button Content="{loc:T Button.OpenDefaultApps}" d:DesignText.Text="打开默认应用设置" Padding="16,6" Margin="0,4,8,4"
+                        Click="OnOpenDefaultAppsClick" />
+                <Rectangle Width="1" Height="18" Fill="{DynamicResource App.Separator}" Margin="4,6,12,6"
+                           VerticalAlignment="Center" />
+                <Button Content="{loc:T Button.RegisterMachine}" d:DesignText.Text="注册到所有用户（管理员）"
+                        Padding="16,6" Margin="0,4,8,4" Click="OnRegisterMachineClick" />
+                <Button Content="{loc:T Button.UnregisterMachine}" d:DesignText.Text="注销机器级关联"
+                        Padding="16,6" Margin="0,4,8,4" Click="OnUnregisterMachineClick" />
+                <Rectangle Width="1" Height="18" Fill="{DynamicResource App.Separator}" Margin="4,6,12,6"
+                           VerticalAlignment="Center" />
+                <Button Content="{loc:T Button.CopyDiagnostics}" d:DesignText.Text="复制诊断信息"
+                        Padding="16,6" Margin="0,4,8,4" Click="OnCopyDiagnosticsClick" />
+                <Rectangle Width="1" Height="18" Fill="{DynamicResource App.Separator}" Margin="4,6,12,6"
+                           VerticalAlignment="Center" />
+                <Button Content="{loc:T Button.OpenLogFolder}" d:DesignText.Text="打开日志目录"
+                        Padding="16,6" Margin="0,4,8,4" Click="OnOpenLogFolderClick" />
+                <Button Content="{loc:T Button.OpenCurrentLog}" d:DesignText.Text="查看当日日志"
+                        Padding="16,6" Margin="0,4,8,4" Click="OnOpenCurrentLogClick" />
+                <Button Content="{loc:T Button.CopyRecentLogs}" d:DesignText.Text="复制最近日志"
+                        Padding="16,6" Margin="0,4,8,4" Click="OnCopyRecentLogsClick" />
+            </WrapPanel>
+        </GroupBox>
+    </Grid>
+    </ScrollViewer>
+</Window>
