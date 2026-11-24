@@ -426,3 +426,6 @@ FodyWeavers.xsd
 #*.lscache
 /.workbuddy
 /Build
+
+# 本地发布产物（dotnet publish 输出与打包的 Release 附件）
+/dist
