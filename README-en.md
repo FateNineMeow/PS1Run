@@ -2,7 +2,7 @@
 
 > A small Windows desktop utility written in C# + WPF that takes over what happens when you double-click a `.ps1` file: run it, edit it, or ask you every time — and automatically pick between Windows PowerShell 5.1 and PowerShell 7 based on the script's encoding.
 
-English | [简体中文](README.md)
+English | [简体中文](README.md) | [Changelog](CHANGELOG.md)
 
 ---
 
@@ -39,9 +39,11 @@ Everything is launched on demand. There is **no background resident process**; t
 
 ## Screenshots
 
-**Main window (light · Simplified Chinese)** — run mode, interpreter, editor, one-click detection, and appearance/language/log settings all on a single page.
+**Main window (light · Simplified Chinese)** — three tabs: General (run mode, executor & editor: PS5.1 / PS7+ / editor path, one-click detection), File association (status card and registration actions), and Logs & appearance (logs, appearance & language, config file & version); the association badge stays in the title bar, and the Logs & appearance tab shows a red “!” badge when the language pack has no version number.
 
-![PS1Run main window: light theme, Simplified Chinese, showing run mode, interpreter (PS5.1 / PS7+), editor, auto-detect, and appearance/language/log settings](wiki/img-1.png)
+![PS1Run main window: light theme, Simplified Chinese, showing run mode, interpreter (PS5.1 / PS7+ with editor path) and one-click detection; appearance & language live on the diagnostics tab](wiki/img-1.png)
+
+> The screenshot above shows the 0.1.0 single-page layout; since 0.2.0 the build uses the three tabs described here, so the image is pending an update.
 
 **Main window (dark · English)** — the same layout with the dark theme and the English language pack.
 
@@ -105,11 +107,11 @@ Five-level fallback: user-defined → common install paths (VS Code / Notepad++ 
 - The main window is the single place to manage run mode, interpreter policy, editor, file association, theme, language, and logs.
 - Themes: **Auto / Light / Dark**. Auto reads the system `AppsUseLightTheme` value and switches instantly.
 - Localization: strings live in `lang\<code>.json`. Simplified Chinese and English ship with the app; any additional file dropped into `lang\` is discovered by the dropdown, and switching updates already-visible text immediately — no restart.
-- The picker shows the script name, full path, the **PS5/PS7 badge with its rationale**, and an amber warning when a fallback or a missing executable is involved.
+- The picker shows the script name, full path, the **PS5/PS7 badge with its rationale**, and an amber warning when a fallback or a missing executable is involved. It also shows a red notice when a configured executor/editor path no longer exists (or no editor can be discovered), and opens centred on screen without an initial flash.
 
 ### Configuration and logging
 
-- `config.json` stores program configuration (log retention days, theme, language). It is created on first run, written atomically, and backed up then rebuilt if corrupted.
+- `config.json` is the single configuration file: program configuration (log retention days, theme, language) plus behaviour settings (run mode, interpreter policy, custom paths) and a schema `Version`. It is created on first run, written atomically, and backed up then rebuilt if corrupted. A legacy `%APPDATA%\Ps1Run\settings.json` is merged in once at startup and deleted after the merged config is written successfully (kept for a retry if writing fails).
 - Logs roll daily into `log\yyyyMMdd.log`, with levels plus session and process IDs. Retention is configurable, and expired files are pruned on the first run of each day.
 - The UI exposes "Open log folder", "View today's log", "Copy recent logs", and "Clean up now" for easy issue reporting.
 
@@ -202,11 +204,10 @@ The app is portable by default: everything lives in the application root, i.e. t
 
 | Path | Purpose |
 |---|---|
-| `config.json` | Program configuration: log retention days, theme, language |
-| `lang\zh-cn.json` | Simplified Chinese language pack (generated on first run) |
-| `lang\en-us.json` | English language pack (shipped with the app) |
+| `config.json` | The only configuration file: program configuration (log retention, theme, language) + behaviour settings (run mode, interpreter policy, custom paths) + schema version |
+| `lang\zh-cn.json` | Simplified Chinese language pack (shipped; rebuilt at startup when its version is missing or older) |
+| `lang\en-us.json` | English language pack (shipped, never overwritten automatically) |
 | `log\yyyyMMdd.log` | Daily rolling runtime log |
-| `%APPDATA%\Ps1Run\settings.json` | Behaviour preferences: run mode, interpreter policy, custom paths |
 
 > If the application root is not writable (typically installed under `Program Files` without elevation), `config.json`, `lang\`, and `log\` **all** fall back together to `%APPDATA%\Ps1Run\`, with a WARN entry in the log. Keeping them on one writable root avoids split-brain configuration.
 
@@ -214,6 +215,12 @@ The app is portable by default: everything lives in the application root, i.e. t
 
 ```json
 {
+  "Version": 1,
+  "RunMode": "Ask",
+  "PowerShellPolicy": "Auto",
+  "CustomPs5Path": "",
+  "CustomPs7Path": "",
+  "CustomEditorPath": "",
   "LogDays": 7,
   "Theme": "Auto",
   "Language": "zh-cn"
@@ -222,6 +229,10 @@ The app is portable by default: everything lives in the application root, i.e. t
 
 | Field | Value | Notes |
 |---|---|---|
+| `Version` | currently `1` | Schema version; a missing value marks a legacy file which is upgraded and merged with the old `settings.json` on load |
+| `RunMode` | `Run` / `Edit` / `Ask` | Double-click behaviour; `Ask` prompts every time (default) |
+| `PowerShellPolicy` | `Ps5` / `Ps7` / `Auto` | Interpreter policy; `Auto` decides by script encoding |
+| `CustomPs5Path` / `CustomPs7Path` / `CustomEditorPath` | executable path, empty when unset | Empty values fall back to the discovery chain |
 | `LogDays` | 1–365, default `7` | Log retention in days; out-of-range values are normalized back to 7 |
 | `Theme` | `Auto` / `Light` / `Dark` | `Auto` follows the system theme |
 | `Language` | Language code, e.g. `zh-cn`, `en-us` | Maps to `lang\<code>.json` |
@@ -232,11 +243,14 @@ Create a file such as `lang\ja-jp.json` with key/value pairs, and the dropdown w
 
 ```json
 {
+  "__version": 1,
   "Button.Save": "Save settings",
   "Button.Browse": "Browse…"
 }
 ```
 
+- `__version` is the language-pack version (currently `1`) and is never treated as UI text. When it is missing or older than the expected version, the Logs & appearance tab shows a red “!” badge, a red notice appears inside the tab, and the picker window shows a red line explaining that some text may fall back to Chinese (the pack still loads, missing keys still fall back).
+- Fix it with “Regenerate zh-cn.json”, which rebuilds the Chinese pack from built-in strings. Other language packs are never overwritten automatically — add `__version` or update the text yourself.
 - Missing keys fall back in order: current language → built-in Chinese → the key name itself, so nothing renders blank.
 - The complete key set is available in `lang\zh-cn.json`. Translate only the keys you need; the rest fall back automatically.
 - UI text binds through `{loc:T Key}` and refreshes immediately when the language changes.

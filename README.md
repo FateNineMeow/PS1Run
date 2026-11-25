@@ -4,7 +4,7 @@
 
 > A small Windows desktop utility written in C# + WPF that takes over what happens when you double-click a `.ps1` file: run it, edit it, or ask you every time — and automatically pick between Windows PowerShell 5.1 and PowerShell 7 based on the script's encoding.
 
-[English](README-en.md) | 简体中文
+[English](README-en.md) | 简体中文 | [变更说明](CHANGELOG.md)
 
 ---
 
@@ -54,9 +54,11 @@ PS1Run 把这条链路收回来：
 
 ## 界面预览
 
-**主界面（浅色 · 简体中文）**：运行方式、执行程序、编辑程序、一键探测、外观/语言/日志集中在同一页。
+**主界面（浅色 · 简体中文）**：三个页签——常规（运行方式、执行程序与编辑器：PS5.1 / PS7+ / 编辑器路径、一键识别）、文件关联（关联状态卡片与注册操作）、日志与外观（日志、外观与语言、配置文件与版本）；标题栏常驻关联徽标，语言包缺少版本号时「日志与外观」页签会挂一个「！」徽标。
 
-![PS1Run 主界面：浅色主题、简体中文，包含运行方式、执行程序（PS5.1 / PS7+）、编辑程序、自动探测与外观语言日志设置](wiki/img-1.png)
+![PS1Run 主界面：浅色主题、简体中文，包含运行方式、执行程序（PS5.1 / PS7+ 与编辑器）、一键识别；外观与语言位于日志与外观页](wiki/img-1.png)
+
+> 上图为 0.1.0 的单页布局；自 0.2.0 起已改为「常规 / 文件关联 / 日志与外观」三页签，截图待更新。
 
 **主界面（深色 · English）**：同一界面切到深色主题与英文语言包，布局保持一致。
 
@@ -120,11 +122,11 @@ PS1Run 把这条链路收回来：
 - 主界面集中管理：运行方式、解释器策略、编辑器、文件关联、主题、语言、日志。
 - 主题：**自动 / 浅色 / 深色**。自动模式读取系统 `AppsUseLightTheme` 决定深浅色，切换即时生效。
 - 多语言：文案存于 `lang\<code>.json`，内置简体中文与英文；下拉框会自动发现 `lang` 目录下的新语言文件，切换后已显示的文字立即刷新，无需重启。
-- 选择窗显示脚本名、完整路径、**PS5/PS7 标识与判定依据**，以及降级或缺失时的橙色提醒。
+- 选择窗显示脚本名、完整路径、**PS5/PS7 标识与判定依据**，以及降级或缺失时的橙色提醒；配置的执行程序/编辑器路径不存在（或完全探测不到编辑器）时会额外显示红字提示。窗口打开即在屏幕中央，不闪现。
 
 ### 配置与日志
 
-- `config.json` 保存程序配置（日志天数、主题、语言），首次运行自动生成，原子写入，损坏时备份重建。
+- `config.json` 是唯一配置文件，保存程序配置（日志天数、主题、语言）与运行设置（运行方式、解释器策略、自定义路径），首次运行自动生成，原子写入，损坏时备份重建。
 - 日志按天写入 `log\yyyyMMdd.log`，四级级别、带会话 ID 与进程 ID；保留天数可配，每天第一次运行自动清理过期日志。
 - 界面提供「打开日志目录」「查看当日日志」「复制最近日志」「立即清理」，方便反馈问题。
 
@@ -217,11 +219,12 @@ dotnet build Ps1Run.slnx
 
 | 路径 | 用途 |
 |---|---|
-| `config.json` | 程序配置：日志保留天数、主题、语言 |
-| `lang\zh-cn.json` | 简体中文语言包（首次运行自动生成） |
-| `lang\en-us.json` | 英文语言包（随程序附带） |
+| `config.json` | 唯一配置文件：程序配置（日志保留天数、主题、语言）+ 行为设置（运行方式、解释器策略、自定义路径）+ schema 版本号 |
+| `lang\zh-cn.json` | 简体中文语言包（随程序附带；缺版本号或版本较旧时启动会按内置文案重建） |
+| `lang\en-us.json` | 英文语言包（随程序附带，不会被自动覆盖） |
 | `log\yyyyMMdd.log` | 按天滚动的运行日志 |
-| `%APPDATA%\Ps1Run\settings.json` | 行为偏好：运行方式、解释器策略、自定义路径 |
+
+> 旧版的 `%APPDATA%\Ps1Run\settings.json` 会在首次启动时**一次性合并**进根目录 `config.json`；写入成功后自动删除原文件（写入失败则保留，下次启动重试）。
 
 > 如果软件根目录不可写（典型：装在 `Program Files` 且未提权），`config.json`、`lang\`、`log\` 会**一起**退化到 `%APPDATA%\Ps1Run\`，并写一条 WARN 日志，保证三者始终在同一个可写根下。
 
@@ -229,6 +232,12 @@ dotnet build Ps1Run.slnx
 
 ```json
 {
+  "Version": 1,
+  "RunMode": "Ask",
+  "PowerShellPolicy": "Auto",
+  "CustomPs5Path": "",
+  "CustomPs7Path": "",
+  "CustomEditorPath": "",
   "LogDays": 7,
   "Theme": "Auto",
   "Language": "zh-cn"
@@ -237,6 +246,10 @@ dotnet build Ps1Run.slnx
 
 | 字段 | 取值 | 说明 |
 |---|---|---|
+| `Version` | 当前为 `1` | 文件 schema 版本；缺失视为旧文件，读取时自动补写并合并旧 `settings.json` |
+| `RunMode` | `Run` / `Edit` / `Ask` | 双击 `.ps1` 的行为；`Ask` 每次弹窗（默认） |
+| `PowerShellPolicy` | `Ps5` / `Ps7` / `Auto` | 解释器策略；`Auto` 按脚本编码判定 |
+| `CustomPs5Path` / `CustomPs7Path` / `CustomEditorPath` | 可执行文件路径，空串表示未指定 | 为空时按探测链自动查找 |
 | `LogDays` | 1–365，默认 `7` | 日志保留天数；越界会被收敛回 7 |
 | `Theme` | `Auto` / `Light` / `Dark` | `Auto` 跟随系统主题 |
 | `Language` | 语言代码，如 `zh-cn`、`en-us` | 对应 `lang\<code>.json` |
@@ -247,11 +260,14 @@ dotnet build Ps1Run.slnx
 
 ```json
 {
+  "__version": 1,
   "Button.Save": "保存设置",
   "Button.Browse": "浏览…"
 }
 ```
 
+- `__version` 是语言包版本号（当前为 `1`），加载时不会当作界面文案。**缺少它或低于程序期望版本时**：「日志与外观」页签挂「！」徽标、页内出现红字提醒，运行时选择窗也会用红字说明"部分文字可能显示为中文"（语言包照常加载，缺键仍回退中文）。
+- 修复方式：点「重新生成 zh-cn.json」按内置文案重建中文包；其他语言包不会被程序覆盖，需自行补上 `__version` 或更新文案。
 - 缺失的键会逐级回退：当前语言 → 内置中文 → 键名本身，不会因为漏翻而出现空白。
 - 键名全集可在 `lang\zh-cn.json` 中查到，按需增删；只需覆盖想翻译的键，其余留空即可回退。
 - 界面文案通过 `{loc:T Key}` 绑定，切换语言后立即生效。

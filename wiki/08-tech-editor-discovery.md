@@ -76,7 +76,7 @@
 
 > 第 1–5 级已落地：第 5 级记事本不存在时 `Resolve()` 返回 `null`，分发链路给出可读错误提示并记日志；用户需到主界面手工指定编辑器路径。这与原始需求"文件不存在时提示用户选择"仍有差距，D20 登记为待补项。
 
-**保存策略（当前实现）**：`Resolve()` 返回的 `EditorDefinition` 带 `Source`（`Settings` / `KnownPath` / `AppPaths` / `Uninstall` / `PATH` / `Fallback`）；主界面的"一键自动探测"会把探测结果写回 `settings.json` 的 `CustomEditorPath`，下次启动优先复用。分发过程本身不自动改写设置，但每次使用配置路径前都会做 `File.Exists` 校验——程序可能已被卸载。
+**保存策略（当前实现）**：`Resolve()` 返回的 `EditorDefinition` 带 `Source`（`Settings` / `KnownPath` / `AppPaths` / `Uninstall` / `PATH` / `Fallback`）；主界面的"一键自动探测"会把探测结果写回 `config.json` 的 `CustomEditorPath`，下次启动优先复用。分发过程本身不自动改写设置，但每次使用配置路径前都会做 `File.Exists` 校验——程序可能已被卸载。
 
 **界面呈现**：主界面显示"当前编辑器：VS Code（来自注册表 App Paths）"，让用户知道为什么选了这个，也方便他改。
 

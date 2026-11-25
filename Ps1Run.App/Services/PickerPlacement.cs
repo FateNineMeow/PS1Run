@@ -15,6 +15,25 @@ namespace Ps1Run.App.Services
         private const double FallbackWidth = 460;
         private const double FallbackHeight = 260;
 
+        /// <summary>
+        /// 在窗口首次显示前先按主显示器工作区居中，避免从 (0,0) 闪现到目标位置。
+        /// SystemParameters.WorkArea 已是 DIP，无需再做 DPI 换算。
+        /// </summary>
+        public static void CenterOnPrimaryMonitor(Window window)
+        {
+            if (window is null)
+            {
+                throw new ArgumentNullException(nameof(window));
+            }
+
+            var work = SystemParameters.WorkArea;
+            var width = window.ActualWidth > 0 ? window.ActualWidth : SafeWidth(window.Width);
+            var height = window.ActualHeight > 0 ? window.ActualHeight : SafeHeight(window.Height);
+
+            window.Left = work.Left + Math.Max(0, (work.Width - width) / 2);
+            window.Top = work.Top + Math.Max(0, (work.Height - height) / 2);
+        }
+
         public static void CenterOnCursorMonitor(Window window)
         {
             if (window is null)

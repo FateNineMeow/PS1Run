@@ -122,7 +122,7 @@ namespace System.Runtime.CompilerServices
 ### 4.1 工程组织
 
 ```
-src\PS1Run\
+.\（仓库根）
 ├─ Ps1Run.slnx
 ├─ Directory.Build.props          ← 公共属性 + 双目标
 ├─ Ps1Run.App\                    ← net48;net11.0-windows，WinExe，UseWPF
@@ -225,17 +225,17 @@ public static void Initialize()
 
 ```powershell
 # 一次构建两个目标
-dotnet build src\PS1Run\Ps1Run.slnx -c Release
+dotnet build Ps1Run.slnx -c Release
 
 # 只构建某一目标
-dotnet build src\PS1Run\Ps1Run.App -c Release -f net48
-dotnet build src\PS1Run\Ps1Run.App -c Release -f net11.0-windows
+dotnet build Ps1Run.App -c Release -f net48
+dotnet build Ps1Run.App -c Release -f net11.0-windows
 
 # 发布（net48：框架依赖，产物小，用户零安装）
-dotnet publish src\PS1Run\Ps1Run.App -c Release -f net48 -o Build\net48
+dotnet publish Ps1Run.App -c Release -f net48 -o Build\net48
 
 # 发布（net11：需目标机装 Desktop Runtime）
-dotnet publish src\PS1Run\Ps1Run.App -c Release -f net11.0-windows -o Build\net11
+dotnet publish Ps1Run.App -c Release -f net11.0-windows -o Build\net11
 ```
 
 ---

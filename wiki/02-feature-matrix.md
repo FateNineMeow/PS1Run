@@ -62,10 +62,10 @@
 | F2.1 | 命令行参数解析 | `Ps1Run.Core\Dispatch\CommandLineOptions.cs` → `Parse(string[])` | 自定义解析：`--open` / `--run` / `--edit` / `--ask` / `--settings` / `--help`、`-h`、`-?` / `--register-machine` / `--unregister-machine` / `--` 后接字面路径 / 裸参数 | 🔵 | 能正确处理含空格、中文、以 `-` 开头的路径；帮助/机器级参数已在帮助文本列出 | [05](05-architecture-flows.md#2-参数协议) |
 | F2.2 | 动作决策：显式参数 > 设置运行方式 > 询问窗 | `Ps1Run.Core\Dispatch\LaunchDispatcher.cs` → `DecideAction()` | `RunMode { Run, Edit, Ask }`；显式 `--run/--edit` 绕过 `Ask` | 🔵 | 三种运行方式 × 显式/隐式入口的 6 种组合均符合预期优先级 | [05](05-architecture-flows.md#3-启动流程) |
 | F2.3 | 无窗口直通模式 | `Ps1Run.App\App.xaml.cs` → `OnStartup()` 中分流 | `ShutdownMode.OnExplicitShutdown`；不创建 `MainWindow` | 🔵 | `Run`/`Edit` 全程无窗口闪烁；`Ask` 只出现一个独立小窗 | [10](10-eval-background-residency.md#4-落地手段) |
-| F2.4 | "选择"模式弹窗（三按钮 + 定位 + 解释器标识） | `Ps1Run.App\Views\PickerWindow.xaml(.cs)`、`ViewModels\PickerViewModel.cs`；数据来自 `LaunchDispatcher.PreviewPowerShell()` | WPF `Window`，`ShowDialog()`；`GetCursorPos` + `MonitorFromPoint` 定位到鼠标所在屏居中；`ShowInTaskbar=false`；卡片展示 PS5/PS7、exe 与判定依据 | 🔵 | 三按钮、键盘与多屏定位已实现；`Topmost=true`；执行前即可看到将用 PS5 还是 PS7，降级/缺失显示橙色提醒 | [05](05-architecture-flows.md#5-选择模式的弹窗设计) |
+| F2.4 | "选择"模式弹窗（三按钮 + 定位 + 解释器标识） | `Ps1Run.App\Views\PickerWindow.xaml(.cs)`、`ViewModels\PickerViewModel.cs`；数据来自 `LaunchDispatcher.PreviewPowerShell()` 与 `PickRequest.Settings` | WPF `Window`，`ShowDialog()`；构造时按主屏工作区预居中，`SourceInitialized` 再按 `GetCursorPos` + `MonitorFromPoint` 定位到鼠标所在屏居中；`ShowInTaskbar=false`；卡片展示 PS5/PS7、exe 与判定依据 | 🔵 | 三按钮、键盘与多屏定位已实现；首屏不再从左上角闪现；`Topmost=true`；窗口高度按内容自适应；执行前即可看到将用 PS5 还是 PS7，降级/缺失显示橙色提醒，配置路径失效显示红字 | [05](05-architecture-flows.md#5-选择模式的弹窗设计) |
 | F2.5 | 选择窗"以后都这样处理" | `PickerViewModel` + `SettingsStore.Save()` | 勾选后按所点按钮写 `RunMode=Run/Edit` | 🔵 | 勾选并执行后，下次双击不再弹窗 | [05](05-architecture-flows.md#5-选择模式的弹窗设计) |
 | F2.6 | 取消语义与退出码 | `LaunchDispatcher.Cancel()` | 不启动进程、不写设置、退出码 `0`；窗口创建失败退出码 `4` | 🔵 | 三路取消语义与退出码已实现；`INFO: 用户在 Ask 弹窗选择取消` 日志已补齐 | [05](05-architecture-flows.md#6-选择模式的取消行为) |
-| F2.7 | 主界面（关联状态、设置、诊断） | `Ps1Run.App\Views\MainWindow.xaml(.cs)`、`ViewModels\MainViewModel.cs` | 参照同级项目 `打开方式清理` 的 `MainViewModel` + `DataContext` 模式 | 🔵 | 启动本程序（无参数）时显示；含运行方式三选一。操作按钮统一放 `WrapPanel` 自动换行，消除叠加；「自动探测」独立成行，`AutoDetect()` 按 [07 §3](07-tech-powershell-encoding.md#3-探测顺序) / [08 §4](08-tech-editor-discovery.md#4-四级回退链) 一键识别 PS5、PS7 与编辑器，回填路径、记录命中来源并自动保存 | [03](03-project-structure.md) |
+| F2.7 | 主界面（关联状态、设置、诊断） | `Ps1Run.App\Views\MainWindow.xaml(.cs)`、`ViewModels\MainViewModel.cs` | 参照同级项目 `打开方式清理` 的 `MainViewModel` + `DataContext` 模式 | 🔵 | 启动本程序（无参数）时显示；采用**三页签**：常规（运行方式 / 执行程序——PS5、PS7 与编辑器路径同组 / 一键识别）、文件关联（状态卡片 + 注册与引导操作）、日志与外观（日志保留与清理、外观与语言、配置文件与版本）。标题栏常驻关联徽标；语言包缺版本号时「日志与外观」页签挂「！」徽标并在页内显示红字提醒与「重新生成 zh-cn.json」；底部状态条显示最近一次操作反馈（无反馈时提示"更改即时生效"）与关闭按钮；原「诊断信息」分组已移除（与其它页重复）；一键识别 `AutoDetect()` 按 [07 §3](07-tech-powershell-encoding.md#3-探测顺序) / [08 §4](08-tech-editor-discovery.md#4-四级回退链) 识别 PS5、PS7 与编辑器并自动保存，**已配置且文件存在的程序保持原样、不被覆盖**（只补空缺或替换失效路径） | [03](03-project-structure.md)、[05 §4.5](05-architecture-flows.md#45-无参数启动) |
 
 ---
 
@@ -110,7 +110,7 @@
 | 编号 | 功能点 | 实现落点 | 关键 API | 状态 | 验收要点 |
 |---|---|---|---|---|---|
 | F5.1 | 设置模型 | `Ps1Run.Core\Settings\AppSettings.cs` | `record`（net48 需 `IsExternalInit` 垫片） | 🔵 | 字段覆盖 F3.3/F3.6/F4.6/F2.2 全部选项 |
-| F5.2 | 设置读写 | `Ps1Run.Core\Settings\SettingsStore.cs` | `%APPDATA%\Ps1Run\settings.json`，固定 schema 轻量序列化（零依赖） | 🔵 | 已改为 `settings.json`（UTF-8 无 BOM），固定 schema 轻量序列化避免 net48 引入依赖；缺失用默认值、损坏自动备份为 `.bad.*` 并重建，原子写入；设置变更自动保存 |
+| F5.2 | 设置读写 | `Ps1Run.Core\Settings\SettingsStore.cs` + `Ps1Run.Core\Configuration\ConfigDocument.cs` | 与程序配置合并到软件根目录 `config.json`，固定 schema 轻量序列化（零依赖） | 🔵 | 设置与 config.json 合并为一份文件（`AppState`：Version + 运行设置 + 程序配置），两个 Store 都经 `ConfigDocument` 读改写自己的键、互不覆盖；旧 `%APPDATA%\Ps1Run\settings.json` 首次读取时一次性合并，写入成功后删除原文件（失败则保留重试）；缺失用默认值、损坏备份 `.bad.*` 并重建、原子写入；设置变更自动保存 |
 | F5.3 | 原子写入 | `SettingsStore.Save()` | 写临时文件 + `File.Replace` | 🔵 | 断电/崩溃不产生半截文件 |
 | F5.4 | 关联状态快照 | `AssociationService.GetStatus()` | 汇总：ProgId 存在性、动词命令、UserChoice 指向、PS/编辑器可用性 | 🔵 | 主界面能一眼看出"是否生效、为什么没生效" |
 
@@ -121,7 +121,7 @@
 | 编号 | 功能点 | 实现落点 | 状态 | 验收要点 |
 |---|---|---|---|---|
 | F6.1 | 轻量日志（分级 + 会话） | `Ps1Run.Core\Infrastructure\DiagnosticsLog.cs`（`<软件根目录>\log\yyyyMMdd.log`，按天滚动，保留天数取 config.json 的 `LogDays`，默认 7 天） | 🔵 | `DEBUG/INFO/WARN/ERROR` 四级；每条带 `[s:会话ID]` 与 `[p:进程ID]`；记录参数、判定编码、选中解释器、进程 PID、退出码；Ask 取消记 `INFO`，异常记类型与消息 |
-| F6.2 | 诊断信息复制 | 主界面"复制诊断信息"按钮 | 🔵 | 一键复制关联状态、UserChoice、PS/编辑器可用性、设置/配置/日志路径；**不含**日志文件正文（见 F6.5） |
+| F6.2 | ~~诊断信息复制~~（已移除） | — | ⚪ | 与文件关联页、日志页、配置文件页重复，已删除"诊断信息"分组与"刷新状态 / 复制诊断信息"按钮；状态反馈改为窗口底部单行；需要日志内容时用 F6.5 的"复制最近日志" |
 | F6.3 | 启动失败的可读提示 | `App.xaml.cs` 全局 `DispatcherUnhandledException` | 🔵 | 记录日志、弹中文提示并标记 `Handled`；参数非法/文件缺失/进程启动失败均有中文提示与退出码 |
 | F6.4 | 打开日志目录 | `MainViewModel.OpenLogFolder()` + 主界面"打开日志目录"按钮 | 🔵 | 在资源管理器中打开 `<软件根目录>\log\`；目录不存在时自动创建 |
 | F6.5 | 查看/复制当日日志 | `MainViewModel.OpenCurrentLog()` / `BuildRecentLogReport()` + "查看当日日志"/"复制最近日志"按钮 | 🔵 | 用系统关联程序打开当日日志；一键复制最近 150 行（含日志路径与会话 ID） |
@@ -133,12 +133,12 @@
 
 | 编号 | 功能点 | 实现落点 | 状态 | 验收要点 |
 |---|---|---|---|---|
-| F7.1 | config.json 持久化 | `Ps1Run.Core\Configuration\ConfigStore.cs`、`AppConfig.cs`；默认 `config.json` 内容为 `{"LogDays":7,"Theme":"Auto","Language":"zh-cn"}` | 🔵 | 首次运行自动生成；原子写入（临时文件 + 替换）；损坏时备份为 `config.json.bad.时间戳` 并重建默认；`LogDays` 收敛到 1–365，非法值回退 7 |
+| F7.1 | config.json 持久化（唯一配置文件） | `Ps1Run.Core\Configuration\ConfigStore.cs`、`AppConfig.cs`、`AppState.cs`、`ConfigDocument.cs`；默认内容含 `Version`、`RunMode`、`PowerShellPolicy`、三条自定义路径、`LogDays`、`Theme`、`Language` | 🔵 | 与 settings.json 合并到软件根目录同一份文件；首次运行自动生成；原子写入（临时文件 + 替换）；损坏时备份为 `config.json.bad.时间戳` 并重建默认；缺 `Version` 视为旧文件，补写版本号并合并旧 settings.json，合并成功后删除旧文件；已有版本号时发现旧文件残留也会清理；`LogDays` 收敛到 1–365，非法值回退 7 |
 | F7.2 | 路径约定与可写退化 | `Ps1Run.Core\Configuration\AppPaths.cs` | 🔵 | 根目录取 exe 所在目录；不可写时 config/lang/log 一起退化到 `%APPDATA%\Ps1Run` 并记 WARN |
 | F7.3 | 日志天数可配 + 每日清理 | `MainViewModel.LogDaysText` + `DiagnosticsLog.Prune` | 🔵 | 界面可改（1–365，合法即落盘）；"立即清理"按当前天数手动清理；每天首次运行自动清理（见 F6.6） |
 | F7.4 | 主题（深色/浅色/自动） | `Ps1Run.App\Themes\Light.xaml`、`Dark.xaml`、`Services\ThemeManager.cs`；主界面"主题"下拉 | 🔵 | 切换立即生效（替换 App 级主题字典，`DynamicResource` 全量重绘）；`Auto` 读 `HKCU\...\Themes\Personalize\AppsUseLightTheme`；窗口、按钮、输入框、下拉框、复选框、分组框均随主题变化 |
-| F7.5 | i18n 语言包 | `Ps1Run.Core\Localization\*`（`DefaultStrings`/`LanguageCatalog`）、`Ps1Run.App\Localization\*`（`LocalizationManager`/`TExtension`） | 🔵 | 文案存放在 `<软件根目录>\lang\<code>.json`；缺失时按内置中文生成 `zh-cn.json`；缺键回退中文再回退键名；`{loc:T Key}` 绑定 |
-| F7.6 | 语言下拉与即时切换 | 主界面"语言"下拉（`LanguageIndex`）+ `LocalizationManager.Load()` | 🔵 | 扫描 `lang\*.json` 生成选项（zh-cn 固定第一，随程序附带 `en-us.json`）；选择后立即重新加载并刷新已绑定文案、写入 config.json，无需重启 |
+| F7.5 | i18n 语言包与版本号 | `Ps1Run.Core\Localization\*`（`DefaultStrings`/`LanguageCatalog`）、`Ps1Run.App\Localization\*`（`LocalizationManager`/`TExtension`） | 🔵 | 文案存放在 `<软件根目录>\lang\<code>.json`；语言包首行写 `__version`（当前 1）；`zh-cn.json` 随程序发布，缺失/无版本号/版本较旧时启动按内置文案重建（应用新版），其他语言包只读取不覆盖；缺键回退中文再回退键名；`{loc:T Key}` 绑定 |
+| F7.6 | 语言下拉与即时切换 | 主界面"语言"下拉（`LanguageIndex`）+ `LocalizationManager.Load()` | 🔵 | 扫描 `lang\*.json` 生成选项（zh-cn 固定第一，随程序附带 `en-us.json`）；选择后立即重新加载并刷新已绑定文案、写入 config.json，无需重启；语言包缺版本号时「日志与外观」页签显示「！」徽标 + 页内红字提醒，选择窗同步红字，并可用「重新生成 zh-cn.json」修复 |
 | F7.7 | 设计期文本 | `Ps1Run.App\Localization\DesignText.cs`（`d:DesignText.Text`） | 🔵 | 设计器里显示文本、运行时不参与渲染；取值为 `zh-cn.json` 对应内容 |
 
 > 说明：WPF 编译器不支持 `d:Text="…"` 这种省略归属类型的短写法（会报 MC3005/MC3072），因此统一写成 `d:DesignText.Text="…"`，语义与需求一致：**仅设计期可见，运行期文案来自语言包**。

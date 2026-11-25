@@ -12,6 +12,8 @@ namespace Ps1Run.Core.Tests
         public static void RunAll()
         {
             GeneratesDefaultLanguageFile();
+            UpgradesOldDefaultPack();
+            DetectsMissingPackVersion();
             DiscoversAvailableLanguages();
             ParsesEscapesAndUnicode();
             RejectsBrokenLanguageFile();
@@ -38,6 +40,42 @@ namespace Ps1Run.Core.Tests
             Assert.NotNull(entries, "解析结果不应为空");
             Assert.Equal("保存设置", entries!["Button.Save"], "Button.Save 文案应一致");
             Assert.Equal(DefaultStrings.ZhCn.Count, entries.Count, "生成的键数量应与内置文案一致");
+        }
+
+        private static void UpgradesOldDefaultPack()
+        {
+            var dir = NewTempDirectory();
+            var file = Path.Combine(dir, "zh-cn.json");
+            File.WriteAllText(file, "{ \"Button.Save\": \"旧文案\" }", new UTF8Encoding(false));
+
+            Assert.True(LanguageCatalog.ReadVersion(file) is null, "旧语言包应被识别为无版本号");
+
+            LanguageCatalog.EnsureDefaultFiles(dir);
+
+            Assert.Equal(LanguageCatalog.CurrentVersion, LanguageCatalog.ReadVersion(file), "旧语言包应被升级到当前版本");
+
+            Assert.True(
+                LanguageCatalog.TryLoad(file, out var entries, out var version, out var error),
+                "升级后的 zh-cn.json 应能被解析：" + error);
+            Assert.Equal(LanguageCatalog.CurrentVersion, version, "加载时应带出版本号");
+            Assert.True(!entries!.ContainsKey(DefaultStrings.PackVersionKey), "版本号不应作为文案条目暴露");
+            Assert.Equal("保存设置", entries["Button.Save"], "升级后应使用内置文案");
+        }
+
+        private static void DetectsMissingPackVersion()
+        {
+            var dir = NewTempDirectory();
+            var file = Path.Combine(dir, "en-us.json");
+            File.WriteAllText(file, "{ \"Button.Save\": \"Save\" }", new UTF8Encoding(false));
+
+            Assert.True(LanguageCatalog.ReadVersion(file) is null, "无版本号应返回 null");
+
+            // 其他语言包处理逻辑不变：照常加载，只是能识别出版本号缺失
+            Assert.True(
+                LanguageCatalog.TryLoad(file, out var entries, out var version, out var error),
+                "旧语言包仍应能加载：" + error);
+            Assert.True(version is null, "缺失版本号时版本为 null");
+            Assert.Equal("Save", entries!["Button.Save"], "其他语言包文案应按原样加载");
         }
 
         private static void DiscoversAvailableLanguages()

@@ -21,8 +21,7 @@ namespace Ps1Run.App.ViewModels
 {
     /// <summary>
     /// 主界面视图模型（wiki 02 F2.7 / F5.4 / F7.x）。
-    /// 设置分两份：settings.json（运行方式 / 解释器 / 编辑器）与
-    /// config.json（日志天数 / 主题 / 语言）。
+    /// 设置只有一份：软件根目录 config.json（程序配置 + 运行设置 + 版本号）。
     /// </summary>
     public sealed class MainViewModel : INotifyPropertyChanged
     {
@@ -43,6 +42,7 @@ namespace Ps1Run.App.ViewModels
         private string _logDaysText;
         private string _statusText = string.Empty;
         private string? _detectionText;
+        private AssociationStatus? _associationStatus;
         private bool _suppressAutoSave;
 
         public MainViewModel(SettingsStore store, AppSettings settings, ConfigStore configStore, AppConfig config)
@@ -77,8 +77,7 @@ namespace Ps1Run.App.ViewModels
 
         public string ExecutablePath => _associations.ExecutablePath;
 
-        public string SettingsFilePath => _store.FilePath;
-
+        /// <summary>唯一的配置文件路径（程序配置与运行设置都在这里）。</summary>
         public string ConfigFilePath => _configStore.FilePath;
 
         public string LogDirectory => DiagnosticsLog.LogDirectory;
@@ -265,11 +264,91 @@ namespace Ps1Run.App.ViewModels
 
                 _statusText = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(BottomHint));
             }
         }
 
+        /// <summary>底部状态条文字：有操作反馈时优先显示，否则显示"更改即时生效"。</summary>
+        public string BottomHint => string.IsNullOrEmpty(_statusText) ? L("Hint.AutoSaved") : _statusText;
+
         /// <summary>一键探测的简短结果（命中路径 + 命中来源），显示在探测行。</summary>
         public string DetectionText => _detectionText ?? L("Main.Detection.Idle");
+
+        /// <summary>
+        /// 关联状态徽标的三态：None / Partial / Full。
+        /// 用字符串而不是枚举，便于 XAML 里直接写 DataTrigger 的 Value。
+        /// </summary>
+        public string AssociationBadgeState
+        {
+            get
+            {
+                if (_associationStatus is null || !_associationStatus.ProgIdRegistered)
+                {
+                    return "None";
+                }
+
+                return _associationStatus.FullyRegistered ? "Full" : "Partial";
+            }
+        }
+
+        /// <summary>标题栏徽标文字：已注册 / 部分注册 / 未注册。</summary>
+        public string AssociationBadgeText
+        {
+            get
+            {
+                switch (AssociationBadgeState)
+                {
+                    case "Full":
+                        return L("Badge.Registered");
+                    case "Partial":
+                        return L("Badge.Partial");
+                    default:
+                        return L("Badge.NotRegistered");
+                }
+            }
+        }
+
+        /// <summary>关联页状态卡片：三个动词是否齐备。</summary>
+        public string AssociationVerbsText
+        {
+            get
+            {
+                var status = _associationStatus;
+                if (status is null)
+                {
+                    return "—";
+                }
+
+                return "open " + Flag(status.OpenVerbRegistered)
+                    + "   run " + Flag(status.RunVerbRegistered)
+                    + "   edit " + Flag(status.EditVerbRegistered);
+            }
+        }
+
+        /// <summary>关联页状态卡片：扩展声明是否已加入 OpenWithProgids。</summary>
+        public string AssociationExtensionText
+        {
+            get
+            {
+                var status = _associationStatus;
+                if (status is null)
+                {
+                    return "—";
+                }
+
+                return status.ExtensionAdvertised ? L("Status.Added") : L("Status.NotAdded");
+            }
+        }
+
+        /// <summary>关联页状态卡片：UserChoice 现状（可能压过 ProgId 关联）。</summary>
+        public string AssociationUserChoiceText =>
+            _associationStatus is null ? "—" : UserChoiceGuard.Describe(_associationStatus.UserChoice);
+
+        /// <summary>UserChoice 指向别的 ProgId 时，卡片上给出橙色提醒。</summary>
+        public bool AssociationUserChoiceOverridden =>
+            _associationStatus is not null
+            && _associationStatus.UserChoice.HasOverride
+            && !_associationStatus.UserChoice.PointsToUs;
 
         public void Save()
         {
@@ -277,10 +356,8 @@ namespace Ps1Run.App.ViewModels
             {
                 _store.Save(_settings);
                 _configStore.Save(_config);
-                DiagnosticsLog.Info("设置已保存：" + _store.FilePath + " / " + _configStore.FilePath);
-                StatusText = L("Main.Saved") + _store.FilePath + Environment.NewLine
-                    + L("Status.ConfigFile") + _configStore.FilePath + Environment.NewLine + Environment.NewLine
-                    + BuildStatus();
+                DiagnosticsLog.Info("配置已保存：" + _configStore.FilePath);
+                StatusText = L("Main.Saved") + _configStore.FilePath;
             }
             catch (IOException ex)
             {
@@ -310,29 +387,52 @@ namespace Ps1Run.App.ViewModels
 
         public void RefreshStatus(string? prefix = null)
         {
-            var body = BuildStatus();
-            StatusText = string.IsNullOrEmpty(prefix)
-                ? body
-                : prefix + Environment.NewLine + Environment.NewLine + body;
+            // 关联状态读一次，供徽标与关联页卡片共用
+            _associationStatus = _associations.GetStatus();
+
+            if (!string.IsNullOrEmpty(prefix))
+            {
+                StatusText = prefix!;
+            }
 
             OnPropertyChanged(nameof(ExecutablePath));
+            OnPropertyChanged(nameof(AssociationBadgeState));
+            OnPropertyChanged(nameof(AssociationBadgeText));
+            OnPropertyChanged(nameof(AssociationVerbsText));
+            OnPropertyChanged(nameof(AssociationExtensionText));
+            OnPropertyChanged(nameof(AssociationUserChoiceText));
+            OnPropertyChanged(nameof(AssociationUserChoiceOverridden));
         }
 
         /// <summary>
-        /// 一键探测：按 wiki 07 §3（PS5/PS7 探测顺序）与 08 §4（编辑器回退链）
-        /// 识别解释器与编辑器，命中结果回填设置并自动保存；未命中时保留用户原配置。
+        /// 一键识别：按 wiki 07 §3（PS5/PS7 探测顺序）与 08 §4（编辑器回退链）
+        /// 识别解释器与编辑器，命中结果回填设置并自动保存。
+        /// 只补空缺——已配置且文件仍存在的 PS / 编辑器保持原样，不被探测结果覆盖；
+        /// 未命中且原配置为空（或已失效）时保留原值，不做破坏性写入。
         /// </summary>
         public void AutoDetect()
         {
-            var ps5 = new PowerShellLocator().Locate(PowerShellEdition.Ps5);
-            var ps7 = new PowerShellLocator().Locate(PowerShellEdition.Ps7);
-            var editor = new EditorLocator().Resolve();
+            var locator = new PowerShellLocator();
+            var editorLocator = new EditorLocator();
+
+            // 原配置仍有效 → 一键识别不碰它
+            var keptPs5Path = ExistingPath(_settings.CustomPs5Path);
+            var keptPs7Path = ExistingPath(_settings.CustomPs7Path);
+            var keptEditorPath = ExistingPath(_settings.CustomEditorPath);
+
+            var ps5 = keptPs5Path is null ? locator.Locate(PowerShellEdition.Ps5) : null;
+            var ps7 = keptPs7Path is null ? locator.Locate(PowerShellEdition.Ps7) : null;
+            var editor = keptEditorPath is null ? editorLocator.Resolve() : null;
 
             var report = new StringBuilder();
             _suppressAutoSave = true;
             try
             {
-                if (ps5 is null)
+                if (keptPs5Path is not null)
+                {
+                    AppendKept(report, L("Main.Detection.Ps5Label"), keptPs5Path);
+                }
+                else if (ps5 is null)
                 {
                     report.Append(L("Main.Detection.Ps5Label")).Append("：").AppendLine(L("Main.Detection.NotFound"));
                 }
@@ -343,7 +443,11 @@ namespace Ps1Run.App.ViewModels
                         .Append("（").Append(ps5.ProbeSource).AppendLine("）");
                 }
 
-                if (ps7 is null)
+                if (keptPs7Path is not null)
+                {
+                    AppendKept(report, L("Main.Detection.Ps7Label"), keptPs7Path);
+                }
+                else if (ps7 is null)
                 {
                     report.Append(L("Main.Detection.Ps7Label")).Append("：").AppendLine(L("Main.Detection.NotFound"));
                 }
@@ -354,7 +458,11 @@ namespace Ps1Run.App.ViewModels
                         .Append("（").Append(ps7.ProbeSource).AppendLine("）");
                 }
 
-                if (editor is null)
+                if (keptEditorPath is not null)
+                {
+                    AppendKept(report, L("Main.Detection.EditorLabel"), keptEditorPath);
+                }
+                else if (editor is null)
                 {
                     report.Append(L("Main.Detection.EditorLabel")).Append("：").AppendLine(L("Main.Detection.NotFound"));
                 }
@@ -387,13 +495,31 @@ namespace Ps1Run.App.ViewModels
 
             _detectionText = report.ToString().TrimEnd();
             OnPropertyChanged(nameof(DetectionText));
-            StatusText = L("Main.Detection.Done") + Environment.NewLine + Environment.NewLine
-                + DetectionText + Environment.NewLine + Environment.NewLine + BuildStatus();
+            StatusText = L("Main.Detection.Done");
 
             DiagnosticsLog.Info(
-                "一键探测：PS5=" + (ps5?.ExecutablePath ?? "<未找到>")
-                + " PS7=" + (ps7?.ExecutablePath ?? "<未找到>")
-                + " 编辑器=" + (editor?.ExecutablePath ?? "<未找到>"));
+                "一键识别：" + DescribeDetection("PS5", keptPs5Path, ps5?.ExecutablePath)
+                + " " + DescribeDetection("PS7", keptPs7Path, ps7?.ExecutablePath)
+                + " " + DescribeDetection("编辑器", keptEditorPath, editor?.ExecutablePath));
+        }
+
+        /// <summary>探测结果行：原配置有效时写明"保留"，避免误以为被覆盖。</summary>
+        private static void AppendKept(StringBuilder report, string label, string path) =>
+            report.Append(label).Append("：").Append(path)
+                .Append("（").Append(L("Main.Detection.Kept")).AppendLine("）");
+
+        private static string DescribeDetection(string label, string? keptPath, string? detectedPath) =>
+            label + "=" + (keptPath ?? detectedPath ?? "<未找到>") + (keptPath is null ? string.Empty : "（保留）");
+
+        /// <summary>已配置且文件仍存在时返回原路径；空值、失效路径返回 null（允许重新探测）。</summary>
+        private static string? ExistingPath(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return null;
+            }
+
+            return File.Exists(path) ? path : null;
         }
 
         public void PickEditor()
@@ -641,48 +767,70 @@ namespace Ps1Run.App.ViewModels
             }
         }
 
-        private string BuildStatus()
+        /// <summary>程序版本号（来自程序集版本）；缺失时显示占位文案。</summary>
+        public string AppVersionText => AppInfo.HasVersion ? AppInfo.DisplayVersion : L("Main.VersionMissing");
+
+        /// <summary>当前语言包的版本号与文件名。</summary>
+        public string LanguagePackVersionText
         {
-            var status = _associations.GetStatus();
-            var builder = new StringBuilder();
-
-            builder.Append(L("Status.Association"))
-                .Append(status.ProgIdRegistered ? L("Status.Registered") : L("Status.NotRegistered"))
-                .Append(L("Status.Verbs")).Append("open=").Append(Flag(status.OpenVerbRegistered))
-                .Append(" run=").Append(Flag(status.RunVerbRegistered))
-                .Append(" edit=").Append(Flag(status.EditVerbRegistered))
-                .AppendLine();
-            builder.Append(L("Status.OpenWithProgids"))
-                .Append(status.ExtensionAdvertised ? L("Status.Added") : L("Status.NotAdded"))
-                .AppendLine();
-            builder.Append(L("Status.ExecutablePath")).Append(status.ExecutablePath).AppendLine();
-            builder.Append(L("Status.UserChoice")).Append(UserChoiceGuard.Describe(status.UserChoice)).AppendLine();
-
-            var locator = new PowerShellLocator();
-            var ps5 = locator.Locate(PowerShellEdition.Ps5, _settings.CustomPs5Path);
-            var ps7 = locator.Locate(PowerShellEdition.Ps7, _settings.CustomPs7Path);
-            builder.Append(L("Status.Ps5")).Append(DescribePowerShell(ps5)).AppendLine();
-            builder.Append(L("Status.Ps7")).Append(DescribePowerShell(ps7)).AppendLine();
-
-            var editor = new EditorLocator().Resolve(_settings.CustomEditorPath);
-            builder.Append(L("Status.Editor"));
-            builder.Append(editor is null
-                ? L("Status.EditorMissing")
-                : editor.DisplayName + "（" + editor.Source + "）");
-            builder.AppendLine();
-            builder.Append(L("Status.SettingsFile")).Append(_store.FilePath).AppendLine();
-            builder.Append(L("Status.ConfigFile")).Append(_configStore.FilePath).AppendLine();
-            builder.Append(L("Status.LogDirectory")).Append(LogDirectory).AppendLine();
-            builder.Append(L("Status.CurrentLog")).Append(CurrentLogFile);
-
-            return builder.ToString();
+            get
+            {
+                var loc = LocalizationManager.Instance;
+                var file = Path.GetFileName(loc.PackFile);
+                var version = loc.LoadedPackVersion;
+                return version is null
+                    ? L("Warning.NoVersion") + " · " + file
+                    : "v" + version.Value.ToString(CultureInfo.InvariantCulture) + " · " + file;
+            }
         }
 
-        private static string DescribePowerShell(PowerShellTarget? target)
+        /// <summary>语言包缺少版本号（或低于程序期望版本）时，页签徽标与提醒卡片显示。</summary>
+        public bool HasVersionWarning => LocalizationManager.Instance.IsPackOutdated;
+
+        /// <summary>版本提醒正文（针对语言文件）；无提醒时为空。</summary>
+        public string VersionWarningText
         {
-            return target is null
-                ? L("Status.NotFound")
-                : target.ExecutablePath + "（" + target.ProbeSource + "）";
+            get
+            {
+                var loc = LocalizationManager.Instance;
+                if (!loc.IsPackOutdated)
+                {
+                    return string.Empty;
+                }
+
+                return string.Format(
+                    CultureInfo.CurrentCulture,
+                    L("Warning.LanguagePackOutdated"),
+                    Path.GetFileName(loc.PackFile),
+                    loc.ExpectedPackVersion.ToString(CultureInfo.InvariantCulture));
+            }
+        }
+
+        /// <summary>
+        /// 按内置中文重建 zh-cn.json（等同于应用随程序发布的新版语言包）；
+        /// 其他语言包不会被覆盖，仍需用户自行更新。
+        /// </summary>
+        public void RebuildLanguagePack()
+        {
+            var path = LocalizationManager.Instance.LanguageFilePath(DefaultStrings.DefaultLanguageCode);
+
+            try
+            {
+                LanguageCatalog.WriteDefaultFile(path);
+                DiagnosticsLog.Info("已重新生成语言包：" + path);
+                LocalizationManager.Instance.Load(LocalizationManager.Instance.CurrentLanguage);
+                StatusText = L("Main.LanguagePackRebuilt") + path;
+            }
+            catch (IOException ex)
+            {
+                DiagnosticsLog.Error("重新生成语言包失败：" + ex.Message, ex);
+                StatusText = L("Main.LanguagePackRebuildFailed") + ex.Message;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                DiagnosticsLog.Error("重新生成语言包失败：" + ex.Message, ex);
+                StatusText = L("Main.LanguagePackRebuildFailed") + ex.Message;
+            }
         }
 
         private static string Flag(bool value) => value ? "√" : "×";

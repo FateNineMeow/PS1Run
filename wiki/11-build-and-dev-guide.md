@@ -1,6 +1,6 @@
 # 11 开发与构建指南
 
-> 状态横幅：截至 2026-11-24，`src\PS1Run` 的工程已搭建完成，`dotnet build Ps1Run.slnx` 实测 **0 警告 0 错误**。本页保留"从零搭建"步骤供重建参考，日常直接使用 §3 的构建命令。所有命令均在本机（Windows 11 26300 + SDK 11.0.100）验证过。
+> 状态横幅：项目已是独立仓库，工程搭建完成，在仓库根执行 `dotnet build Ps1Run.slnx` 实测 **0 警告 0 错误**。本页保留"从零搭建"步骤供重建参考，日常直接使用 §3 的构建命令（全部命令默认**当前目录 = 仓库根**）。所有命令均在本机（Windows 11 26300 + SDK 11.0.100）验证过。
 
 ---
 
@@ -31,7 +31,7 @@ Test-Path 'C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETF
 > 当前工程（含 `Ps1Run.Core.Tests`）已经存在，本节仅作重建/迁移参考；不要对现有目录重复执行 `dotnet new`。正式测试工程是零外部依赖的控制台项目，而非 xunit 模板。
 
 ```powershell
-$root = 'f:\Code\tool-box\src\PS1Run'
+$root = (Resolve-Path '.').Path   # 当前目录 = 仓库根
 
 # 1) 解决方案
 dotnet new sln -n Ps1Run -o $root
@@ -50,7 +50,7 @@ dotnet sln "$root\Ps1Run.slnx" add "$root\Ps1Run.App\Ps1Run.App.csproj" `
 
 > 模板生成后需要按 [03 项目结构](03-project-structure.md#5-关键工程属性) 与 [09 §4](09-eval-dual-target-framework.md#4-双版本生成方案可执行) 改写 csproj（改 `TargetFrameworks`、`OutputType`、`UseWPF`、`OutputPath` 等）。
 
-**与仓库构建脚本的兼容**：`src\运行.ps1` 会遍历 `src\` 下每个子目录执行 `dotnet build`。因此 `Ps1Run.slnx` **必须**放在 `src\PS1Run\` 根目录，否则该脚本在本目录会因"找不到项目"而失败。
+**与仓库构建脚本的兼容**：项目已是独立仓库，直接在仓库根执行 `dotnet build Ps1Run.slnx` 即可；原先"父仓库 `src\运行.ps1` 遍历 `src\` 各子目录执行构建"的约束已不再适用。仓库自带的构建入口在 `scripts\` 下（见 §3.1）。
 
 ---
 
@@ -58,14 +58,14 @@ dotnet sln "$root\Ps1Run.slnx" add "$root\Ps1Run.App\Ps1Run.App.csproj" `
 
 ```powershell
 # 全量（两个目标）
-dotnet build src\PS1Run\Ps1Run.slnx -c Debug
+dotnet build Ps1Run.slnx -c Debug
 
 # 只构建一个目标（迭代更快）
-dotnet build src\PS1Run\Ps1Run.App -c Debug -f net48
-dotnet build src\PS1Run\Ps1Run.App -c Debug -f net11.0-windows
+dotnet build Ps1Run.App -c Debug -f net48
+dotnet build Ps1Run.App -c Debug -f net11.0-windows
 
 # 单元测试（零依赖控制台测试工程，7/7 组通过）
-dotnet run --project src\PS1Run\Ps1Run.Core.Tests -f net11.0-windows
+dotnet run --project Ps1Run.Core.Tests -f net11.0-windows
 ```
 
 **运行日志**：`<软件根目录>\log\yyyyMMdd.log`（按天滚动；保留天数取 `config.json` 的 `LogDays`，默认 7 天，每天首次运行清理一次；带级别/会话 ID/进程 ID）。主界面"打开日志目录"可直接定位，"复制最近日志"可复制当日最后 150 行用于反馈；启动失败、分发结果、关联操作与全局异常均写日志。详见 [02 F6](02-feature-matrix.md#f6-日志与诊断)。
@@ -74,7 +74,7 @@ dotnet run --project src\PS1Run\Ps1Run.Core.Tests -f net11.0-windows
 
 ### 3.1 脚本入口（推荐）
 
-`src\PS1Run\scripts\` 下提供 PowerShell 入口，均为 UTF-8 BOM 编码，兼容 Windows PowerShell 5.1：
+`scripts\` 下提供 PowerShell 入口，均为 UTF-8 BOM 编码，兼容 Windows PowerShell 5.1：
 
 | 脚本 | 作用 | 常用参数 |
 |---|---|---|
@@ -112,13 +112,13 @@ dotnet run --project src\PS1Run\Ps1Run.Core.Tests -f net11.0-windows
 
 ```powershell
 # net48：框架依赖，产物小，用户零安装（推荐主发布）
-dotnet publish src\PS1Run\Ps1Run.App -c Release -f net48 -o Build\net48
+dotnet publish Ps1Run.App -c Release -f net48 -o Build\net48
 
 # net11：框架依赖（目标机需 .NET 11 Desktop Runtime）
-dotnet publish src\PS1Run\Ps1Run.App -c Release -f net11.0-windows -o Build\net11
+dotnet publish Ps1Run.App -c Release -f net11.0-windows -o Build\net11
 
 # net11：自包含单文件（体积大，但无运行时依赖）
-dotnet publish src\PS1Run\Ps1Run.App -c Release -f net11.0-windows `
+dotnet publish Ps1Run.App -c Release -f net11.0-windows `
     --self-contained true -r win-x64 `
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
     -o Build\net11-selfcontained
@@ -203,7 +203,7 @@ dotnet run -f net11.0-windows            # 期望：GBK936=FAIL NotSupportedExce
 | 想查分发/注册失败原因 | 启动、分发、关联操作与异常均按会话写日志 | 看 `<软件根目录>\log\yyyyMMdd.log`，或在主界面点"复制最近日志" |
 | 界面语言/主题不生效 | `config.json` 的值非法或语言包缺失 | 检查 `config.json`（`Theme` 取 Auto/Light/Dark，`Language` 对应 `lang\<code>.json`），日志里有"已应用语言/主题"记录 |
 | 双击脚本中文路径执行失败 | 命令拼接未加引号 | 检查 `"%1"` 与 `ArgumentList`/转义 |
-| `dotnet build` 在 `src\PS1Run` 下找不到项目 | 缺 slnx 或 csproj 在根 | 把 `Ps1Run.slnx` 放到该目录根 |
+| `dotnet build` 在仓库根找不到项目 | 缺 slnx，或当前目录不是仓库根 | 在仓库根执行 `dotnet build Ps1Run.slnx` |
 
 ---
 

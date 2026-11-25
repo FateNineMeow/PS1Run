@@ -38,8 +38,6 @@ namespace Ps1Run.App.Views
         private void OnUnregisterClick(object sender, RoutedEventArgs e) =>
             ViewModel?.UnregisterAssociation();
 
-        private void OnRefreshClick(object sender, RoutedEventArgs e) => ViewModel?.RefreshStatus();
-
         private void OnAutoDetectClick(object sender, RoutedEventArgs e) => ViewModel?.AutoDetect();
 
         private void OnPickEditorClick(object sender, RoutedEventArgs e) => ViewModel?.PickEditor();
@@ -62,11 +60,11 @@ namespace Ps1Run.App.Views
         private void OnUnregisterMachineClick(object sender, RoutedEventArgs e) =>
             ViewModel?.UnregisterAssociationMachine();
 
-        private void OnCopyDiagnosticsClick(object sender, RoutedEventArgs e) =>
-            CopyToClipboard(ViewModel?.StatusText);
-
         private void OnOpenLogFolderClick(object sender, RoutedEventArgs e) =>
             ViewModel?.OpenLogFolder();
+
+        private void OnRebuildLanguagePackClick(object sender, RoutedEventArgs e) =>
+            ViewModel?.RebuildLanguagePack();
 
         private void OnOpenCurrentLogClick(object sender, RoutedEventArgs e) =>
             ViewModel?.OpenCurrentLog();
@@ -79,6 +77,8 @@ namespace Ps1Run.App.Views
 
         private void OnOpenConfigClick(object sender, RoutedEventArgs e) =>
             ViewModel?.OpenConfigFile();
+
+        private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
 
         private static void CopyToClipboard(string? text)
         {

@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using System.Windows.Input;
 using Ps1Run.App.Services;
@@ -28,15 +29,22 @@ namespace Ps1Run.App.Views
         public PickerWindow(PickRequest request)
         {
             InitializeComponent();
+
+            // 先按主显示器居中，保证 ShowDialog 时窗口已经位于屏幕中央，
+            // 不会先闪现在左上角再被 Loaded 事件挪走。
+            PickerPlacement.CenterOnPrimaryMonitor(this);
+
             _viewModel = new PickerViewModel(request);
             DataContext = _viewModel;
-            Loaded += OnLoaded;
+            SourceInitialized += OnSourceInitialized;
         }
 
         /// <summary>ShowDialog 结束后的结果；null 表示取消/未选择。</summary>
         public PickResult? Result { get; private set; }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        // SourceInitialized 早于首次绘制：此时已经有 HWND 可做 DPI 换算，
+        // 再把窗口挪到鼠标所在显示器正中央，过程对用户不可见。
+        private void OnSourceInitialized(object? sender, EventArgs e)
         {
             PickerPlacement.CenterOnCursorMonitor(this);
         }

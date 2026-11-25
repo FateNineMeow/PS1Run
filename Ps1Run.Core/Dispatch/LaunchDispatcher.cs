@@ -53,11 +53,15 @@ namespace Ps1Run.Core.Dispatch
     /// <summary>选择窗输入。</summary>
     public sealed class PickRequest
     {
-        public PickRequest(string scriptPath, PowerShellPreview? powerShell = null)
+        public PickRequest(
+            string scriptPath,
+            PowerShellPreview? powerShell = null,
+            AppSettings? settings = null)
         {
             ScriptPath = scriptPath;
             DisplayName = Path.GetFileName(scriptPath);
             PowerShell = powerShell;
+            Settings = settings;
         }
 
         public string ScriptPath { get; }
@@ -66,6 +70,9 @@ namespace Ps1Run.Core.Dispatch
 
         /// <summary>执行时的解释器预判结果，仅用于界面标识，不改变分发行为。</summary>
         public PowerShellPreview? PowerShell { get; }
+
+        /// <summary>当前运行设置，供选择窗检查执行程序/编辑器配置是否有效。</summary>
+        public AppSettings? Settings { get; }
     }
 
     /// <summary>
@@ -270,7 +277,7 @@ namespace Ps1Run.Core.Dispatch
                     "缺少选择窗实现（无交互桌面）");
             }
 
-            var result = _picker.Pick(new PickRequest(scriptPath, PreviewPowerShell(scriptPath)));
+            var result = _picker.Pick(new PickRequest(scriptPath, PreviewPowerShell(scriptPath), _settings));
             if (result is null)
             {
                 return new DispatchDecision(

@@ -15,6 +15,15 @@ namespace Ps1Run.Core.Localization
     {
         public const string DefaultLanguageCode = "zh-cn";
 
+        /// <summary>
+        /// 语言包版本号。语言包结构或键集合有较大变化时递增；
+        /// 语言文件缺少该版本号（或低于当前值）说明是旧语言包，界面会提示更新。
+        /// </summary>
+        public const int PackVersion = 1;
+
+        /// <summary>语言包中记录版本号的保留键（不是界面文案，加载时会被剔除）。</summary>
+        public const string PackVersionKey = "__version";
+
         /// <summary>语言代码 → 下拉框显示名（语言自称，不随界面语言变化）。</summary>
         private static readonly Dictionary<string, string> DisplayNames =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -38,11 +47,19 @@ namespace Ps1Run.Core.Localization
             return DisplayNames.TryGetValue(code.Trim(), out var name) ? name : code.Trim();
         }
 
-        /// <summary>把默认文案序列化成 lang\zh-cn.json 的内容（键按字母序，便于人工比对）。</summary>
+        /// <summary>
+        /// 把默认文案序列化成 lang\zh-cn.json 的内容（首行为版本号，键按字母序，便于人工比对）。
+        /// </summary>
         public static string ToJson()
         {
             var builder = new StringBuilder();
             builder.AppendLine("{");
+            builder.Append("  ")
+                .Append(SimpleJson.Quote(PackVersionKey))
+                .Append(": ")
+                .Append(PackVersion)
+                .AppendLine(",");
+
             var entries = ZhCn.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToList();
             for (var i = 0; i < entries.Count; i++)
             {
@@ -61,16 +78,30 @@ namespace Ps1Run.Core.Localization
         {
             var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                // 主界面：页签与状态徽标
+                ["Tab.General"] = "常规",
+                ["Tab.Association"] = "文件关联",
+                ["Tab.LogsAndAppearance"] = "日志与外观",
+                ["Badge.Registered"] = "已注册",
+                ["Badge.Partial"] = "部分注册",
+                ["Badge.NotRegistered"] = "未注册",
+
                 // 主界面：标题与分组
                 ["App.Title"] = "PS1Run — PowerShell 脚本启动器",
                 ["App.Subtitle"] = "决定双击 .ps1 时交给编辑器还是解释器",
                 ["Group.RunMode"] = "运行方式（双击行为）",
-                ["Group.Executor"] = "执行程序",
-                ["Group.Editor"] = "编辑程序",
+                ["Group.Executor"] = "执行程序与编辑器",
                 ["Group.Detect"] = "自动探测（一键识别）",
-                ["Group.Preferences"] = "外观、语言与日志",
-                ["Group.Diagnostics"] = "诊断信息",
+                ["Group.Appearance"] = "外观与语言",
+                ["Group.Logs"] = "日志",
+                ["Group.SettingsFiles"] = "配置文件与版本",
+                ["Group.AssociationStatus"] = "关联状态",
                 ["Group.Actions"] = "操作",
+                ["Label.Verbs"] = "动词",
+                ["Label.Extension"] = "扩展声明",
+                ["Hint.AutoSaved"] = "更改即时生效，无需手动保存。",
+                ["Hint.Association"] = "关联写入当前用户（HKCU\\Software\\Classes）；机器级注册需要管理员确认。系统“默认应用”由 UserChoice 决定，改变它需手动确认一次。",
+                ["Button.Close"] = "关闭",
 
                 // 主界面：运行方式
                 ["RunMode.Run"] = "执行（直接运行脚本）",
@@ -102,26 +133,34 @@ namespace Ps1Run.Core.Localization
                 ["Button.PruneNow"] = "立即清理",
                 ["Label.ConfigFile"] = "配置文件",
                 ["Button.OpenConfig"] = "打开",
+                ["Label.AppVersion"] = "程序版本",
+                ["Label.LanguagePack"] = "语言包版本",
+
+                // 主界面：版本提醒（语言文件缺少版本号）
+                ["Warning.Title"] = "语言包版本提醒",
+                ["Warning.LanguagePackOutdated"] = "语言包 {0} 缺少版本号或低于当前版本（v{1}），部分文字会回退为中文。可重新生成 zh-cn.json；其他语言包需自行更新，程序不会自动覆盖。",
+                ["Warning.NoVersion"] = "无",
+                ["Button.RebuildLanguagePack"] = "重新生成 zh-cn.json",
+                ["Hint.Version"] = "版本号用于判断配置文件与语言包是否与当前程序匹配。",
 
                 // 主界面：操作按钮
                 ["Button.Save"] = "保存设置",
-                ["Button.Refresh"] = "刷新状态",
                 ["Button.Register"] = "注册关联",
                 ["Button.Unregister"] = "注销关联",
                 ["Button.OpenWith"] = "系统“打开方式”…",
                 ["Button.OpenDefaultApps"] = "打开默认应用设置",
                 ["Button.RegisterMachine"] = "注册到所有用户（管理员）",
                 ["Button.UnregisterMachine"] = "注销机器级关联",
-                ["Button.CopyDiagnostics"] = "复制诊断信息",
                 ["Button.OpenLogFolder"] = "打开日志目录",
                 ["Button.OpenCurrentLog"] = "查看当日日志",
                 ["Button.CopyRecentLogs"] = "复制最近日志",
 
                 // 主界面：视图模型提示
-                ["Main.Detection.Idle"] = "尚未探测。点击左侧按钮按探测链识别 PS5 / PS7 / 编辑程序。",
-                ["Main.Detection.Done"] = "一键探测完成。",
+                ["Main.Detection.Idle"] = "尚未探测。点击左侧按钮按探测链识别 PS5 / PS7 / 编辑程序；已配置且文件存在的程序保持不变。",
+                ["Main.Detection.Done"] = "一键识别完成。",
                 ["Main.Detection.Saved"] = "结果已自动保存。",
                 ["Main.Detection.NotFound"] = "未找到（保留原设置）",
+                ["Main.Detection.Kept"] = "保留原设置，未修改",
                 ["Main.Detection.Ps5Label"] = "PS5.1",
                 ["Main.Detection.Ps7Label"] = "PS7+",
                 ["Main.Detection.EditorLabel"] = "编辑器",
@@ -148,26 +187,16 @@ namespace Ps1Run.Core.Localization
                 ["Main.LogDays.Unit"] = " 天。",
                 ["Main.PruneResult"] = "已清理过期日志：",
                 ["Main.PruneUnit"] = " 个文件。",
+                ["Main.VersionMissing"] = "缺少版本号",
+                ["Main.LanguagePackRebuilt"] = "已重新生成语言包：",
+                ["Main.LanguagePackRebuildFailed"] = "重新生成语言包失败：",
 
-                // 主界面：诊断快照标签
-                ["Status.Association"] = "关联：ProgId ",
-                ["Status.Registered"] = "已注册",
-                ["Status.NotRegistered"] = "未注册",
-                ["Status.Verbs"] = "；动词 ",
-                ["Status.OpenWithProgids"] = "扩展声明（OpenWithProgids）：",
+                // 主界面：关联状态卡片标签
                 ["Status.Added"] = "已加入",
                 ["Status.NotAdded"] = "未加入",
                 ["Status.ExecutablePath"] = "程序路径：",
                 ["Status.UserChoice"] = "UserChoice：",
-                ["Status.Ps5"] = "PowerShell 5.1：",
-                ["Status.Ps7"] = "PowerShell 7+：",
-                ["Status.Editor"] = "编辑器：",
-                ["Status.EditorMissing"] = "未找到可用编辑器",
-                ["Status.SettingsFile"] = "设置文件：",
-                ["Status.ConfigFile"] = "配置文件：",
                 ["Status.LogDirectory"] = "日志目录：",
-                ["Status.CurrentLog"] = "当日日志：",
-                ["Status.NotFound"] = "未找到",
 
                 // 选择窗
                 ["Picker.Title"] = "选择处理方式",
@@ -184,6 +213,11 @@ namespace Ps1Run.Core.Localization
                 ["Picker.PolicyPs7"] = "固定策略：PowerShell 7",
                 ["Picker.AutoReason"] = "自动判定：",
                 ["Picker.MissingExe"] = "未找到可执行文件",
+                ["Picker.ConfigPs5Missing"] = "配置的 PowerShell 5.1 路径不存在：{0}",
+                ["Picker.ConfigPs7Missing"] = "配置的 PowerShell 7+ 路径不存在：{0}",
+                ["Picker.ConfigEditorMissing"] = "配置的编辑器路径不存在：{0}",
+                ["Picker.EditorMissing"] = "未配置编辑器，且自动探测未找到可用编辑器；编辑操作将失败。",
+                ["Picker.PackWarning"] = "语言包版本过旧（缺少版本号），部分文字可能显示为中文。",
 
                 // 编码判型
                 ["Encoding.Utf8Bom"] = "UTF-8 带 BOM",

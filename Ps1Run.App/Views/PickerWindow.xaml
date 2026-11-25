@@ -5,7 +5,7 @@
         xmlns:d="clr-namespace:Ps1Run.App.Localization"
         Title="{loc:T Picker.Title}"
         Icon="pack://application:,,,/icon.ico"
-        Width="460" Height="360"
+        Width="460" SizeToContent="Height"
         WindowStartupLocation="Manual"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
@@ -22,7 +22,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -54,9 +54,18 @@
             </StackPanel>
         </Border>
 
-        <CheckBox Grid.Row="3" Margin="0,14,0,0" VerticalAlignment="Top"
-                  Content="{loc:T Picker.Remember}" d:DesignText.Text="以后都这样处理（不再询问）"
-                  IsChecked="{Binding RememberChoice, Mode=TwoWay}" />
+        <StackPanel Grid.Row="3" Margin="0,14,0,0" VerticalAlignment="Top">
+            <!-- 执行程序/编辑器配置缺失或路径失效时的红字提醒 -->
+            <TextBlock Text="{Binding ConfigWarningText}" Margin="0,0,0,10"
+                       FontSize="11" Foreground="{DynamicResource App.WarningForeground}" TextWrapping="Wrap"
+                       Visibility="{Binding HasConfigWarning, Converter={StaticResource BoolToVisibility}}" />
+            <!-- 语言文件缺版本号时的红字提醒：说明部分文字可能回退中文 -->
+            <TextBlock Text="{Binding PackWarningText}" Margin="0,0,0,10"
+                       FontSize="11" Foreground="{DynamicResource App.WarningForeground}" TextWrapping="Wrap"
+                       Visibility="{Binding HasPackWarning, Converter={StaticResource BoolToVisibility}}" />
+            <CheckBox Content="{loc:T Picker.Remember}" d:DesignText.Text="以后都这样处理（不再询问）"
+                      IsChecked="{Binding RememberChoice, Mode=TwoWay}" />
+        </StackPanel>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="{loc:T Picker.Cancel}" d:DesignText.Text="取消 (Esc)" Padding="16,6" IsCancel="True" Click="OnCancelClick" />

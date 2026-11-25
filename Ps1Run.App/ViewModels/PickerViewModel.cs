@@ -1,7 +1,11 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using Ps1Run.App.Localization;
 using Ps1Run.Core.Dispatch;
+using Ps1Run.Core.Editors;
 using Ps1Run.Core.PowerShell;
 using Ps1Run.Core.Settings;
 
@@ -15,6 +19,7 @@ namespace Ps1Run.App.ViewModels
     public sealed class PickerViewModel : INotifyPropertyChanged
     {
         private readonly PowerShellPreview? _powerShell;
+        private readonly string _configWarningText;
         private bool _rememberChoice;
 
         public PickerViewModel(PickRequest request)
@@ -25,6 +30,7 @@ namespace Ps1Run.App.ViewModels
                 ? L("Picker.NoScript")
                 : Path.GetFileName(ScriptPath);
             _powerShell = request.PowerShell;
+            _configWarningText = BuildConfigWarning(request.Settings);
         }
 
         public PickerViewModel(string scriptPath)
@@ -102,6 +108,16 @@ namespace Ps1Run.App.ViewModels
 
         public bool HasPowerShellWarning => !string.IsNullOrWhiteSpace(PowerShellWarning);
 
+        /// <summary>执行程序/编辑器配置缺失或路径失效时的提醒；无提醒时为空。</summary>
+        public string ConfigWarningText => _configWarningText;
+
+        public bool HasConfigWarning => _configWarningText.Length > 0;
+
+        /// <summary>语言文件缺少版本号（或版本较旧）时的运行期提醒。</summary>
+        public bool HasPackWarning => LocalizationManager.Instance.IsPackOutdated;
+
+        public string PackWarningText => HasPackWarning ? L("Picker.PackWarning") : string.Empty;
+
         public bool RememberChoice
         {
             get => _rememberChoice;
@@ -121,6 +137,54 @@ namespace Ps1Run.App.ViewModels
         {
             // 取消不记住任何偏好（wiki 05 §6）
             return new PickResult(action, action != LaunchAction.Cancel && RememberChoice);
+        }
+
+        /// <summary>
+        /// 只提示"配置写了但程序不在"以及"没有配置也找不到程序"的情况；
+        /// 正常自动探测到解释器和编辑器时保持安静，避免每次弹窗都刷红字。
+        /// </summary>
+        private static string BuildConfigWarning(AppSettings? settings)
+        {
+            if (settings is null)
+            {
+                return string.Empty;
+            }
+
+            var lines = new List<string>();
+            if (!string.IsNullOrWhiteSpace(settings.CustomPs5Path)
+                && !File.Exists(settings.CustomPs5Path!))
+            {
+                lines.Add(string.Format(
+                    CultureInfo.CurrentCulture,
+                    L("Picker.ConfigPs5Missing"),
+                    settings.CustomPs5Path));
+            }
+
+            if (!string.IsNullOrWhiteSpace(settings.CustomPs7Path)
+                && !File.Exists(settings.CustomPs7Path!))
+            {
+                lines.Add(string.Format(
+                    CultureInfo.CurrentCulture,
+                    L("Picker.ConfigPs7Missing"),
+                    settings.CustomPs7Path));
+            }
+
+            if (!string.IsNullOrWhiteSpace(settings.CustomEditorPath))
+            {
+                if (!File.Exists(settings.CustomEditorPath!))
+                {
+                    lines.Add(string.Format(
+                        CultureInfo.CurrentCulture,
+                        L("Picker.ConfigEditorMissing"),
+                        settings.CustomEditorPath));
+                }
+            }
+            else if (new EditorLocator().Resolve() is null)
+            {
+                lines.Add(L("Picker.EditorMissing"));
+            }
+
+            return string.Join(Environment.NewLine, lines);
         }
 
         private static string DescribeEncoding(ScriptEncodingKind? kind)

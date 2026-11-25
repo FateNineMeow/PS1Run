@@ -31,9 +31,11 @@
 
   <ItemGroup>
     <!--
-      随程序发布一份英文语言包，lang\zh-cn.json 由程序首次运行时按内置中文生成。
-      用户可把自己的 xx.json 丢进 lang\ 目录，界面下拉框会自动发现。
+      随程序发布中英文语言包（均带 __version 版本号）：
+      运行时若发现 lang\zh-cn.json 缺版本号或版本较旧，会按内置文案重建（应用新版）；
+      其他语言包只读取、不覆盖，版本不符时界面给出提示。
     -->
     <None Update="lang\en-us.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="lang\zh-cn.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -44,6 +44,7 @@ namespace Ps1Run.App
 
             DiagnosticsLog.Info(
                 "程序配置：file=" + configStore.FilePath
+                + " version=" + AppInfo.Describe()
                 + " logDays=" + config.LogDays.ToString(System.Globalization.CultureInfo.InvariantCulture)
                 + " theme=" + config.Theme
                 + " language=" + config.Language);

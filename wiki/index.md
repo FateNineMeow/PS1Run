@@ -9,13 +9,15 @@
 | 项 | 值 |
 |---|---|
 | 文档基线日期 | 2026-11-24（代码状态同日更新） |
-| 代码仓库实际状态 | `f:\Code\tool-box\src\PS1Run` 已有 `Ps1Run.slnx` 与 `Ps1Run.Core` / `Ps1Run.App` / `Ps1Run.Core.Tests` 三个工程；`dotnet build Ps1Run.slnx` 双目标 **0 警告 0 错误** |
+| 代码仓库实际状态 | 仓库根（独立仓库，含 `.git`）已有 `Ps1Run.slnx` 与 `Ps1Run.Core` / `Ps1Run.App` / `Ps1Run.Core.Tests` 三个工程；`dotnet build Ps1Run.slnx` 双目标 **0 警告 0 错误** |
 | 代码规模 | 93 个工程/资源文件（含 wiki 图片与脚本），其中 C#/XAML 57 个、约 7094 行（不含 `obj/`、`bin/`、`Build/`、`.workbuddy/`） |
 | 功能状态 | 45 个功能点中：🔵 42（代码完成）、🟨 3（部分实现）、⬜ 0、✅ 0（完整验收）；另有 6 项设计稿描述但未落地项 D16–D21 |
 | 关键路径 | `config.json` / `lang\*.json` / `log\yyyyMMdd.log` 均落在**软件根目录**（不可写时整体退化到 `%APPDATA%\Ps1Run`） |
 | 本文档性质 | **设计 + 当前实现状态**；状态真源为 [02 功能实现清单](02-feature-matrix.md)，进度真源为 [04 项目进度与差距](04-progress.md) |
 
 **阅读时请务必记住**：本 wiki 的 45 个功能点均已有代码（42 个按设计完成、3 个部分实现），核心逻辑通过 7/7 组自动化测试。但"代码完成"不等于"通过完整验收"：注册表实机变更、双击分发、多屏弹窗等会改变系统状态或需要真实桌面交互，保留给人工确认。技术专题中标注"设计/规划"的行为不一定已实现，未落地项统一登记为 D16–D21。⬜ 表示未开始；🟨 表示部分实现；🔵 表示代码完成；✅ 才表示通过 wiki [01](01-requirements.md) 的全部逐条验收标准。差异与待办统一记录在 [项目进度与差距](04-progress.md)。
+
+> **路径约定**：本 wiki 所有路径均为**相对仓库根**的写法（`Ps1Run.App\Views\...`、`scripts\...`、`Build\net48\...`），命令行默认在仓库根执行。`%APPDATA%\Ps1Run`、`D:\Soft\Code\VS Code` 等属于运行期或本机实测位置，不是仓库内路径。
 
 ---
 

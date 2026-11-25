@@ -1,13 +1,13 @@
 # 03 项目结构
 
-> 状态横幅：本页描述的结构**主体已落地**。截至 2026-11-24，`f:\Code\tool-box\src\PS1Run` 已有 `Ps1Run.slnx`、三个工程（含 `Ps1Run.Core.Tests`）、57 个 C#/XAML 源文件及 `icon.ico`，双目标构建与 7/7 组单测通过。状态真源见 [02](02-feature-matrix.md) / [04](04-progress.md)。
+> 状态横幅：本页描述的结构**主体已落地**。截至 2026-11-25，项目已迁至独立仓库（含 `.git`），仓库根已有 `Ps1Run.slnx`、三个工程（含 `Ps1Run.Core.Tests`）、57 个 C#/XAML 源文件及 `icon.ico`，双目标构建与 7/7 组单测通过。状态真源见 [02](02-feature-matrix.md) / [04](04-progress.md)。
 
 ---
 
 ## 1. 现状（实测）
 
 ```
-f:\Code\tool-box\src\PS1Run\
+.\（仓库根）
 ├─ Ps1Run.slnx                          ✅ 已存在
 ├─ Directory.Build.props                ✅ 已存在（双目标 + 输出路径）
 ├─ Ps1Run.Core\                         ✅ 已存在（Associations/Dispatch/PowerShell/Editors/Settings/Infrastructure）
@@ -37,14 +37,14 @@ f:\Code\tool-box\src\PS1Run\
 | MVVM 轻量实现 | `DataContext = new MainViewModel()`，手写 `MainViewModel` | 采用，不引入 MVVM 框架 |
 | 语言版本 | `<LangVersion>preview</LangVersion>` | 改为 `latest`（避免 preview 特性带来不确定性） |
 
-同时 `src\运行.ps1` 会遍历 `src\` 下每个子目录并在其中执行 `dotnet build`。这意味着 **`src\PS1Run\` 根目录必须有一个可构建目标**（解决方案文件或工程文件），否则该脚本在本项目上会失败。因此规划把 `Ps1Run.slnx` 放在该根目录。
+项目已是独立仓库（自带 `.git`），`Ps1Run.slnx` 位于仓库根，`dotnet build Ps1Run.slnx` 直接可用。原先"父仓库 `src\运行.ps1` 遍历 `src\` 各子目录执行构建"的约束随之失效，本页不再按 `tool-box` 的子目录约定组织。
 
 ---
 
 ## 3. 当前目录树（已落地）
 
 ```
-f:\Code\tool-box\src\PS1Run\
+.\（仓库根）
 ├─ Ps1Run.slnx                          # 解决方案根，保证 `dotnet build` 在根目录可用
 ├─ Directory.Build.props                # 公共属性：LangVersion/Nullable/双目标列表
 ├─ scripts\                             # 运维脚本（UTF-8 BOM，兼容 Windows PowerShell 5.1）
@@ -88,10 +88,17 @@ f:\Code\tool-box\src\PS1Run\
 │  │  ├─ EditorDefinition.cs            #   编辑器名/路径/参数模板
 │  │  ├─ EditorLocator.cs               #   四级回退链
 │  │  └─ RegistryAppPathReader.cs       #   App Paths / Uninstall 读取
+│  ├─ Configuration\
+│  │  ├─ AppConfig.cs                   #   程序配置模型（日志天数 / 主题 / 语言）
+│  │  ├─ AppState.cs                    #   合并后 config.json 的完整内容（Version + 两者）
+│  │  ├─ ConfigDocument.cs              #   单文件读改写：原子写入 / 损坏备份 / 旧 settings.json 合并
+│  │  ├─ ConfigStore.cs                 #   程序配置读写门面
+│  │  └─ AppPaths.cs                    #   根目录 / config.json / lang / log 约定
 │  ├─ Settings\
 │  │  ├─ AppSettings.cs                 #   设置模型
-│  │  └─ SettingsStore.cs               #   JSON 读写 + 原子写入
+│  │  └─ SettingsStore.cs               #   运行设置读写门面（与 ConfigStore 同一文件）
 │  └─ Infrastructure\
+│     ├─ AppInfo.cs                     #   程序集版本号（界面显示 + 缺失提示）
 │     ├─ NativeMethods.cs               #   SHOpenWithDialog / SHChangeNotify P/Invoke
 │     ├─ DiagnosticsLog.cs              #   分级日志（会话 ID / 保留 7 天 / ReadRecent）
 │     ├─ IFileSystem.cs                 #   文件系统抽象（便于测试注入）
@@ -106,7 +113,7 @@ f:\Code\tool-box\src\PS1Run\
 │  ├─ ScriptEncodingDetectorTests.cs    #   编码判型 6 类输入
 │  ├─ CommandLineOptionsTests.cs        #   参数优先级与冲突
 │  ├─ PowerShellLocatorTests.cs         #   PS5/PS7 探测回退
-│  ├─ SettingsStoreTests.cs             #   JSON 往返与损坏恢复
+│  ├─ SettingsStoreTests.cs             #   JSON 往返 / 与 config.json 同文件 / 损坏恢复
 │  └─ DiagnosticsLogTests.cs            #   日志写入 / 读取 / 保留策略
 │
 └─ wiki\                                # 本文档（13 页，位于工程根）

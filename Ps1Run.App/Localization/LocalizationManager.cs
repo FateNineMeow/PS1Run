@@ -32,6 +32,22 @@ namespace Ps1Run.App.Localization
         /// <summary>当前语言代码（如 zh-cn）。</summary>
         public string CurrentLanguage { get; private set; } = DefaultStrings.DefaultLanguageCode;
 
+        /// <summary>当前语言包的版本号；语言文件缺失或无版本号时为 null。</summary>
+        public int? LoadedPackVersion { get; private set; }
+
+        /// <summary>程序期望的语言包版本。</summary>
+        public int ExpectedPackVersion => LanguageCatalog.CurrentVersion;
+
+        /// <summary>
+        /// 当前语言包是否缺少版本号或低于程序期望版本。
+        /// 只影响提示，不影响加载：语言包照常使用，缺键回退内置中文。
+        /// </summary>
+        public bool IsPackOutdated =>
+            LoadedPackVersion is null || LoadedPackVersion.Value < LanguageCatalog.CurrentVersion;
+
+        /// <summary>当前语言包的完整路径。</summary>
+        public string PackFile => LanguageFilePath(CurrentLanguage);
+
         /// <summary>语法糖：Loc["Button.Save"]。</summary>
         public string this[string key] => Get(key);
 
@@ -86,14 +102,16 @@ namespace Ps1Run.App.Localization
         {
             var normalized = LanguageCatalog.Normalize(code);
             Dictionary<string, string>? entries = null;
+            int? packVersion = null;
 
             try
             {
                 LanguageCatalog.EnsureDefaultFiles(AppPaths.LanguageDirectory);
                 var path = LanguageFilePath(normalized);
-                if (LanguageCatalog.TryLoad(path, out var loaded, out var error) && loaded is not null)
+                if (LanguageCatalog.TryLoad(path, out var loaded, out var version, out var error) && loaded is not null)
                 {
                     entries = loaded;
+                    packVersion = version;
                 }
                 else
                 {
@@ -110,7 +128,17 @@ namespace Ps1Run.App.Localization
             }
 
             _entries = entries;
+            LoadedPackVersion = packVersion;
             CurrentLanguage = normalized;
+
+            if (IsPackOutdated)
+            {
+                DiagnosticsLog.Warn(
+                    "语言包缺少版本号或版本较旧：file=" + LanguageFilePath(normalized)
+                    + " version=" + (packVersion?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<无>")
+                    + " expected=" + LanguageCatalog.CurrentVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + "（仍按原逻辑加载，缺键回退中文）");
+            }
 
             RefreshTranslations();
             DiagnosticsLog.Info(
