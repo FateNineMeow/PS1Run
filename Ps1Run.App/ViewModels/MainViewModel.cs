@@ -43,14 +43,16 @@ namespace Ps1Run.App.ViewModels
         private string _customPs5Path;
         private string _customPs7Path;
         private string _logDaysText;
+        // 状态文案以「生成委托」保存，取值时才按当前语言翻译；语言切换后不会残留旧语言字符串。
         private string _statusText = string.Empty;
-        private string? _detectionText;
+        private Func<string>? _statusFactory;
+        private Func<string>? _detectionFactory;
         private AssociationStatus? _associationStatus;
         private bool _suppressAutoSave;
         private readonly ObservableCollection<ScriptRule> _rules = new ObservableCollection<ScriptRule>();
         private ScriptRule? _selectedRule;
         private string _ruleSearchText = string.Empty;
-        private string _ruleStatusText = string.Empty;
+        private Func<string>? _ruleStatusFactory;
         private readonly string _ruleFilePath;
 
         public MainViewModel(SettingsStore store, AppSettings settings, ConfigStore configStore, AppConfig config)
@@ -191,7 +193,7 @@ namespace Ps1Run.App.ViewModels
                     || days < AppConfig.MinLogDays
                     || days > AppConfig.MaxLogDays)
                 {
-                    StatusText = L("Main.LogDays.Invalid");
+                    SetStatus(() => L("Main.LogDays.Invalid"));
                     return;
                 }
 
@@ -201,7 +203,7 @@ namespace Ps1Run.App.ViewModels
                 }
 
                 UpdateConfig(_config with { LogDays = days });
-                StatusText = L("Main.LogDays.Saved") + days.ToString(CultureInfo.InvariantCulture) + L("Main.LogDays.Unit");
+                SetStatus(() => L("Main.LogDays.Saved") + days.ToString(CultureInfo.InvariantCulture) + L("Main.LogDays.Unit"));
             }
         }
 
@@ -354,10 +356,9 @@ namespace Ps1Run.App.ViewModels
             }
         }
 
-        /// <summary>规则列表底部的条数 / 操作提示。</summary>
-        public string RuleStatusText => string.IsNullOrEmpty(_ruleStatusText)
-            ? string.Format(CultureInfo.CurrentCulture, L("Rule.Count"), _rules.Count.ToString(CultureInfo.InvariantCulture))
-            : _ruleStatusText;
+        /// <summary>规则列表底部的条数 / 操作提示（委托在取值时翻译，切换语言后自动更新）。</summary>
+        public string RuleStatusText => _ruleStatusFactory?.Invoke()
+            ?? string.Format(CultureInfo.CurrentCulture, L("Rule.Count"), _rules.Count.ToString(CultureInfo.InvariantCulture));
 
         public string RuleFilePath => _ruleFilePath;
 
@@ -369,9 +370,11 @@ namespace Ps1Run.App.ViewModels
 
         public string StatusText
         {
-            get => _statusText;
+            // 有生成委托时按当前语言即时翻译，否则返回直接赋值的原文（如外部传入的提示）。
+            get => _statusFactory?.Invoke() ?? _statusText;
             private set
             {
+                _statusFactory = null;
                 if (_statusText == value)
                 {
                     return;
@@ -383,11 +386,38 @@ namespace Ps1Run.App.ViewModels
             }
         }
 
+        /// <summary>用生成委托设置状态文案，切语言后自动取新语言译文。</summary>
+        private void SetStatus(Func<string> factory)
+        {
+            _statusFactory = factory ?? throw new ArgumentNullException(nameof(factory));
+            _statusText = string.Empty;
+            OnPropertyChanged(nameof(StatusText));
+            OnPropertyChanged(nameof(BottomHint));
+        }
+
+        /// <summary>规则页状态文案：用委托保存，同时同步到底部状态条。</summary>
+        private void SetRuleStatus(Func<string>? factory)
+        {
+            _ruleStatusFactory = factory;
+            OnPropertyChanged(nameof(RuleStatusText));
+            if (factory is not null)
+            {
+                SetStatus(() => RuleStatusText);
+            }
+        }
+
         /// <summary>底部状态条文字：有操作反馈时优先显示，否则显示"更改即时生效"。</summary>
-        public string BottomHint => string.IsNullOrEmpty(_statusText) ? L("Hint.AutoSaved") : _statusText;
+        public string BottomHint
+        {
+            get
+            {
+                var status = StatusText;
+                return string.IsNullOrEmpty(status) ? L("Hint.AutoSaved") : status;
+            }
+        }
 
         /// <summary>一键探测的简短结果（命中路径 + 命中来源），显示在探测行。</summary>
-        public string DetectionText => _detectionText ?? L("Main.Detection.Idle");
+        public string DetectionText => _detectionFactory?.Invoke() ?? L("Main.Detection.Idle");
 
         /// <summary>
         /// 关联状态徽标的三态：None / Partial / Full。
@@ -511,18 +541,15 @@ namespace Ps1Run.App.ViewModels
             try
             {
                 ScriptRuleStore.Save(_ruleFilePath, _rules);
-                _ruleStatusText = L("Rule.CriteriaSaved");
-                StatusText = _ruleStatusText;
+                SetRuleStatus(() => L("Rule.CriteriaSaved"));
             }
             catch (IOException ex)
             {
-                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
-                StatusText = _ruleStatusText;
+                SetRuleStatus(() => L("Rule.SaveFailed") + ex.Message);
             }
             catch (UnauthorizedAccessException ex)
             {
-                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
-                StatusText = _ruleStatusText;
+                SetRuleStatus(() => L("Rule.SaveFailed") + ex.Message);
             }
 
             HasUnsavedRules = false;
@@ -543,21 +570,19 @@ namespace Ps1Run.App.ViewModels
                     _rules.Add(rule);
                 }
 
-                _ruleStatusText = string.Empty;
+                SetRuleStatus(null);
                 if (!silent)
                 {
-                    StatusText = L("Rule.Refreshed") + _ruleFilePath;
+                    SetStatus(() => L("Rule.Refreshed") + _ruleFilePath);
                 }
             }
             catch (IOException ex)
             {
-                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
-                StatusText = _ruleStatusText;
+                SetRuleStatus(() => L("Rule.SaveFailed") + ex.Message);
             }
             catch (UnauthorizedAccessException ex)
             {
-                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
-                StatusText = _ruleStatusText;
+                SetRuleStatus(() => L("Rule.SaveFailed") + ex.Message);
             }
 
             SelectedRule = null;
@@ -584,7 +609,7 @@ namespace Ps1Run.App.ViewModels
 
             _rules.Add(rule);
             SelectedRule = rule;
-            _ruleStatusText = string.Empty;
+            SetRuleStatus(null);
             HasUnsavedRules = true;
             OnPropertyChanged(nameof(HasUnsavedRules));
             OnPropertyChanged(nameof(FilteredRules));
@@ -620,7 +645,7 @@ namespace Ps1Run.App.ViewModels
             }
 
             SelectedRule = updated;
-            _ruleStatusText = string.Empty;
+            SetRuleStatus(null);
             HasUnsavedRules = true;
             OnPropertyChanged(nameof(HasUnsavedRules));
             OnPropertyChanged(nameof(FilteredRules));
@@ -637,8 +662,7 @@ namespace Ps1Run.App.ViewModels
             if (_rules.Remove(rule))
             {
                 SelectedRule = null;
-                _ruleStatusText = L("Rule.Deleted") + rule.Path;
-                StatusText = _ruleStatusText;
+                SetRuleStatus(() => L("Rule.Deleted") + rule.Path);
                 HasUnsavedRules = true;
                 OnPropertyChanged(nameof(HasUnsavedRules));
                 OnPropertyChanged(nameof(FilteredRules));
@@ -652,8 +676,7 @@ namespace Ps1Run.App.ViewModels
             try
             {
                 ScriptRuleStore.Save(_ruleFilePath, _rules);
-                _ruleStatusText = L("Rule.Saved") + _ruleFilePath;
-                StatusText = _ruleStatusText;
+                SetRuleStatus(() => L("Rule.Saved") + _ruleFilePath);
                 DiagnosticsLog.Info("规则已保存：" + _ruleFilePath + "（" + _rules.Count + " 条）");
                 HasUnsavedRules = false;
                 OnPropertyChanged(nameof(HasUnsavedRules));
@@ -661,14 +684,12 @@ namespace Ps1Run.App.ViewModels
             catch (IOException ex)
             {
                 DiagnosticsLog.Error("保存规则失败：" + ex.Message, ex);
-                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
-                StatusText = _ruleStatusText;
+                SetRuleStatus(() => L("Rule.SaveFailed") + ex.Message);
             }
             catch (UnauthorizedAccessException ex)
             {
                 DiagnosticsLog.Error("保存规则失败：" + ex.Message, ex);
-                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
-                StatusText = _ruleStatusText;
+                SetRuleStatus(() => L("Rule.SaveFailed") + ex.Message);
             }
 
             OnPropertyChanged(nameof(RuleStatusText));
@@ -681,17 +702,17 @@ namespace Ps1Run.App.ViewModels
                 _store.Save(_settings);
                 _configStore.Save(_config);
                 DiagnosticsLog.Info("配置已保存：" + _configStore.FilePath);
-                StatusText = L("Main.Saved") + _configStore.FilePath;
+                SetStatus(() => L("Main.Saved") + _configStore.FilePath);
             }
             catch (IOException ex)
             {
                 DiagnosticsLog.Error("保存设置失败：" + ex.Message, ex);
-                StatusText = L("Main.SaveFailed") + ex.Message;
+                SetStatus(() => L("Main.SaveFailed") + ex.Message);
             }
             catch (UnauthorizedAccessException ex)
             {
                 DiagnosticsLog.Error("保存设置失败：" + ex.Message, ex);
-                StatusText = L("Main.SaveFailed") + ex.Message;
+                SetStatus(() => L("Main.SaveFailed") + ex.Message);
             }
         }
 
@@ -748,54 +769,23 @@ namespace Ps1Run.App.ViewModels
             var ps7 = keptPs7Path is null ? locator.Locate(PowerShellEdition.Ps7) : null;
             var editor = keptEditorPath is null ? editorLocator.Resolve() : null;
 
-            var report = new StringBuilder();
+            // 回填命中的解释器 / 编辑器路径（只补空缺），结果供报告委托捕获。
             _suppressAutoSave = true;
             try
             {
-                if (keptPs5Path is not null)
-                {
-                    AppendKept(report, L("Main.Detection.Ps5Label"), keptPs5Path);
-                }
-                else if (ps5 is null)
-                {
-                    report.Append(L("Main.Detection.Ps5Label")).Append("：").AppendLine(L("Main.Detection.NotFound"));
-                }
-                else
+                if (ps5 is not null)
                 {
                     CustomPs5Path = ps5.ExecutablePath;
-                    report.Append(L("Main.Detection.Ps5Label")).Append("：").Append(ps5.ExecutablePath)
-                        .Append("（").Append(ps5.ProbeSource).AppendLine("）");
                 }
 
-                if (keptPs7Path is not null)
-                {
-                    AppendKept(report, L("Main.Detection.Ps7Label"), keptPs7Path);
-                }
-                else if (ps7 is null)
-                {
-                    report.Append(L("Main.Detection.Ps7Label")).Append("：").AppendLine(L("Main.Detection.NotFound"));
-                }
-                else
+                if (ps7 is not null)
                 {
                     CustomPs7Path = ps7.ExecutablePath;
-                    report.Append(L("Main.Detection.Ps7Label")).Append("：").Append(ps7.ExecutablePath)
-                        .Append("（").Append(ps7.ProbeSource).AppendLine("）");
                 }
 
-                if (keptEditorPath is not null)
-                {
-                    AppendKept(report, L("Main.Detection.EditorLabel"), keptEditorPath);
-                }
-                else if (editor is null)
-                {
-                    report.Append(L("Main.Detection.EditorLabel")).Append("：").AppendLine(L("Main.Detection.NotFound"));
-                }
-                else
+                if (editor is not null)
                 {
                     CustomEditorPath = editor.ExecutablePath;
-                    report.Append(L("Main.Detection.EditorLabel")).Append("：").Append(editor.DisplayName)
-                        .Append(" — ").Append(editor.ExecutablePath)
-                        .Append("（").Append(editor.Source).AppendLine("）");
                 }
             }
             finally
@@ -803,28 +793,100 @@ namespace Ps1Run.App.ViewModels
                 _suppressAutoSave = false;
             }
 
+            string? saveError = null;
             try
             {
                 _store.Save(_settings);
-                report.AppendLine(L("Main.Detection.Saved"));
             }
             catch (IOException ex)
             {
-                report.AppendLine(L("Main.SaveFailed") + ex.Message);
+                saveError = ex.Message;
             }
             catch (UnauthorizedAccessException ex)
             {
-                report.AppendLine(L("Main.SaveFailed") + ex.Message);
+                saveError = ex.Message;
             }
 
-            _detectionText = report.ToString().TrimEnd();
+            // 报告文案用委托保存：探测结果 / 保存结果被捕获，语言切换时用当前语言重新拼装。
+            _detectionFactory = () => BuildDetectionReport(
+                keptPs5Path, ps5?.ExecutablePath, ps5?.ProbeSource,
+                keptPs7Path, ps7?.ExecutablePath, ps7?.ProbeSource,
+                keptEditorPath, editor?.DisplayName, editor?.ExecutablePath, editor?.Source,
+                saveError);
             OnPropertyChanged(nameof(DetectionText));
-            StatusText = L("Main.Detection.Done");
+            SetStatus(() => L("Main.Detection.Done"));
 
             DiagnosticsLog.Info(
                 "一键识别：" + DescribeDetection("PS5", keptPs5Path, ps5?.ExecutablePath)
                 + " " + DescribeDetection("PS7", keptPs7Path, ps7?.ExecutablePath)
                 + " " + DescribeDetection("编辑器", keptEditorPath, editor?.ExecutablePath));
+        }
+
+        /// <summary>
+        /// 按当前语言拼装一键探测报告。参数均为探测时捕获的快照，故语言切换后
+        /// 只需重新调用本方法即可得到新语言译文，不会重跑探测或改变配置。
+        /// </summary>
+        private static string BuildDetectionReport(
+            string? keptPs5Path, string? ps5Path, string? ps5Source,
+            string? keptPs7Path, string? ps7Path, string? ps7Source,
+            string? keptEditorPath, string? editorName, string? editorPath, string? editorSource,
+            string? saveError)
+        {
+            var report = new StringBuilder();
+
+            if (keptPs5Path is not null)
+            {
+                AppendKept(report, L("Main.Detection.Ps5Label"), keptPs5Path);
+            }
+            else if (ps5Path is null)
+            {
+                report.Append(L("Main.Detection.Ps5Label")).Append("：").AppendLine(L("Main.Detection.NotFound"));
+            }
+            else
+            {
+                report.Append(L("Main.Detection.Ps5Label")).Append("：").Append(ps5Path)
+                    .Append("（").Append(ps5Source).AppendLine("）");
+            }
+
+            if (keptPs7Path is not null)
+            {
+                AppendKept(report, L("Main.Detection.Ps7Label"), keptPs7Path);
+            }
+            else if (ps7Path is null)
+            {
+                report.Append(L("Main.Detection.Ps7Label")).Append("：").AppendLine(L("Main.Detection.NotFound"));
+            }
+            else
+            {
+                report.Append(L("Main.Detection.Ps7Label")).Append("：").Append(ps7Path)
+                    .Append("（").Append(ps7Source).AppendLine("）");
+            }
+
+            if (keptEditorPath is not null)
+            {
+                AppendKept(report, L("Main.Detection.EditorLabel"), keptEditorPath);
+            }
+            else if (editorPath is null)
+            {
+                report.Append(L("Main.Detection.EditorLabel")).Append("：").AppendLine(L("Main.Detection.NotFound"));
+            }
+            else
+            {
+                report.Append(L("Main.Detection.EditorLabel")).Append("：").Append(editorName)
+                    .Append(" — ").Append(editorPath)
+                    .Append("（").Append(editorSource).AppendLine("）");
+            }
+
+            if (saveError is null)
+            {
+                report.AppendLine(L("Main.Detection.Saved"));
+            }
+            else
+            {
+                report.AppendLine(L("Main.SaveFailed") + saveError);
+            }
+
+            return report.ToString().TrimEnd();
         }
 
         /// <summary>探测结果行：原配置有效时写明"保留"，避免误以为被覆盖。</summary>
@@ -859,7 +921,7 @@ namespace Ps1Run.App.ViewModels
             {
                 CustomEditorPath = dialog.FileName;
                 DiagnosticsLog.Info("用户选择编辑器：" + dialog.FileName);
-                StatusText = L("Main.PickEditorSelected") + dialog.FileName + L("Main.AutoSavedSuffix");
+                SetStatus(() => L("Main.PickEditorSelected") + dialog.FileName + L("Main.AutoSavedSuffix"));
             }
             else
             {
@@ -894,7 +956,7 @@ namespace Ps1Run.App.ViewModels
             }
 
             DiagnosticsLog.Info("用户指定 " + expected + "：" + dialog.FileName);
-            StatusText = L("Main.PickPowerShellSelected") + expected + "：" + dialog.FileName + L("Main.AutoSavedSuffix");
+            SetStatus(() => L("Main.PickPowerShellSelected") + expected + "：" + dialog.FileName + L("Main.AutoSavedSuffix"));
         }
 
         public void RegisterAssociationMachine()
@@ -902,12 +964,12 @@ namespace Ps1Run.App.ViewModels
             if (ElevationHelper.TryRestartElevated("--register-machine"))
             {
                 DiagnosticsLog.Info("已请求管理员权限：机器级注册。");
-                StatusText = L("Main.Elevation.Register");
+                SetStatus(() => L("Main.Elevation.Register"));
             }
             else
             {
                 DiagnosticsLog.Warn("未能获取管理员权限：机器级注册（UAC 被取消或被拒绝）。");
-                StatusText = L("Main.Elevation.Denied");
+                SetStatus(() => L("Main.Elevation.Denied"));
             }
         }
 
@@ -916,12 +978,12 @@ namespace Ps1Run.App.ViewModels
             if (ElevationHelper.TryRestartElevated("--unregister-machine"))
             {
                 DiagnosticsLog.Info("已请求管理员权限：机器级注销。");
-                StatusText = L("Main.Elevation.Unregister");
+                SetStatus(() => L("Main.Elevation.Unregister"));
             }
             else
             {
                 DiagnosticsLog.Warn("未能获取管理员权限：机器级注销（UAC 被取消或被拒绝）。");
-                StatusText = L("Main.Elevation.Denied");
+                SetStatus(() => L("Main.Elevation.Denied"));
             }
         }
 
@@ -942,7 +1004,7 @@ namespace Ps1Run.App.ViewModels
             }
             catch (System.ComponentModel.Win32Exception ex)
             {
-                StatusText = L("Main.OpenDefaultAppsFailed") + ex.Message;
+                SetStatus(() => L("Main.OpenDefaultAppsFailed") + ex.Message);
             }
         }
 
@@ -957,13 +1019,13 @@ namespace Ps1Run.App.ViewModels
                     Arguments = "\"" + LogDirectory + "\"",
                     UseShellExecute = true,
                 });
-                StatusText = L("Main.LogFolderOpened") + LogDirectory;
+                SetStatus(() => L("Main.LogFolderOpened") + LogDirectory);
                 DiagnosticsLog.Info("打开日志目录：" + LogDirectory);
             }
             catch (System.ComponentModel.Win32Exception ex)
             {
                 DiagnosticsLog.Error("打开日志目录失败：" + ex.Message, ex);
-                StatusText = L("Main.OpenLogFolderFailed") + ex.Message;
+                SetStatus(() => L("Main.OpenLogFolderFailed") + ex.Message);
             }
         }
 
@@ -981,12 +1043,12 @@ namespace Ps1Run.App.ViewModels
             catch (System.ComponentModel.Win32Exception ex)
             {
                 DiagnosticsLog.Error("打开当日日志失败：" + ex.Message, ex);
-                StatusText = L("Main.OpenLogFailed") + ex.Message;
+                SetStatus(() => L("Main.OpenLogFailed") + ex.Message);
             }
             catch (IOException ex)
             {
                 DiagnosticsLog.Error("打开当日日志失败：" + ex.Message, ex);
-                StatusText = L("Main.OpenLogFailed") + ex.Message;
+                SetStatus(() => L("Main.OpenLogFailed") + ex.Message);
             }
         }
 
@@ -1004,12 +1066,12 @@ namespace Ps1Run.App.ViewModels
             catch (System.ComponentModel.Win32Exception ex)
             {
                 DiagnosticsLog.Error("打开配置文件失败：" + ex.Message, ex);
-                StatusText = L("Main.OpenConfigFailed") + ex.Message;
+                SetStatus(() => L("Main.OpenConfigFailed") + ex.Message);
             }
             catch (IOException ex)
             {
                 DiagnosticsLog.Error("打开配置文件失败：" + ex.Message, ex);
-                StatusText = L("Main.OpenConfigFailed") + ex.Message;
+                SetStatus(() => L("Main.OpenConfigFailed") + ex.Message);
             }
         }
 
@@ -1017,8 +1079,8 @@ namespace Ps1Run.App.ViewModels
         public void PruneLogsNow()
         {
             var removed = DiagnosticsLog.Prune(_config.LogDays);
-            StatusText = L("Main.PruneResult") + removed.ToString(CultureInfo.InvariantCulture) + L("Main.PruneUnit")
-                + Environment.NewLine + L("Status.LogDirectory") + LogDirectory;
+            SetStatus(() => L("Main.PruneResult") + removed.ToString(CultureInfo.InvariantCulture) + L("Main.PruneUnit")
+                + Environment.NewLine + L("Status.LogDirectory") + LogDirectory);
             DiagnosticsLog.Info(
                 "手动清理日志：删除 " + removed.ToString(CultureInfo.InvariantCulture)
                 + " 个，保留天数=" + _config.LogDays.ToString(CultureInfo.InvariantCulture));
@@ -1043,12 +1105,12 @@ namespace Ps1Run.App.ViewModels
             catch (IOException ex)
             {
                 DiagnosticsLog.Error("保存 config.cfg 失败：" + ex.Message, ex);
-                StatusText = L("Main.SaveFailed") + ex.Message;
+                SetStatus(() => L("Main.SaveFailed") + ex.Message);
             }
             catch (UnauthorizedAccessException ex)
             {
                 DiagnosticsLog.Error("保存 config.cfg 失败：" + ex.Message, ex);
-                StatusText = L("Main.SaveFailed") + ex.Message;
+                SetStatus(() => L("Main.SaveFailed") + ex.Message);
             }
         }
 
@@ -1143,17 +1205,17 @@ namespace Ps1Run.App.ViewModels
                 LanguageCatalog.WriteDefaultFile(path);
                 DiagnosticsLog.Info("已重新生成语言包：" + path);
                 LocalizationManager.Instance.Load(LocalizationManager.Instance.CurrentLanguage);
-                StatusText = L("Main.LanguagePackRebuilt") + path;
+                SetStatus(() => L("Main.LanguagePackRebuilt") + path);
             }
             catch (IOException ex)
             {
                 DiagnosticsLog.Error("重新生成语言包失败：" + ex.Message, ex);
-                StatusText = L("Main.LanguagePackRebuildFailed") + ex.Message;
+                SetStatus(() => L("Main.LanguagePackRebuildFailed") + ex.Message);
             }
             catch (UnauthorizedAccessException ex)
             {
                 DiagnosticsLog.Error("重新生成语言包失败：" + ex.Message, ex);
-                StatusText = L("Main.LanguagePackRebuildFailed") + ex.Message;
+                SetStatus(() => L("Main.LanguagePackRebuildFailed") + ex.Message);
             }
         }
 
