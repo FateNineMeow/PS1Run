@@ -16,8 +16,8 @@
 | 构建结果 | `dotnet build Ps1Run.slnx`：**0 警告 0 错误** |
 | 自动化测试 | `Ps1Run.Core.Tests`：**8/8 组通过**（编码判型、参数解析、解释器探测、设置持久化、日志写入与保留、程序配置、多语言资源） |
 | 资源 | `icon.ico`（多尺寸软件 logo）已内嵌为 exe 图标与窗口图标，DefaultIcon 指向 exe；旧 `ps1.ico` 已移除 |
-| 日志 | `<软件根目录>\log\yyyyMMdd.log`：分级、会话 ID、进程 ID、退出码；保留天数取 `config.lang` 的 `LogDays`（默认 7），每天首次运行清理一次；主界面可打开目录/查看/复制 |
-| 程序配置 | `<软件根目录>\config.lang`：`LogDays` / `Theme` / `Language`，首次运行生成 |
+| 日志 | `<软件根目录>\log\yyyyMMdd.log`：分级、会话 ID、进程 ID、退出码；保留天数取 `config.cfg` 的 `LogDays`（默认 7），每天首次运行清理一次；主界面可打开目录/查看/复制 |
+| 程序配置 | `<软件根目录>\config.cfg`：`LogDays` / `Theme` / `Language`，首次运行生成 |
 | 多语言 | `<软件根目录>\lang\*.lang`：缺省生成 `zh-cn.lang`，随程序附带 `en-us.lang`，下拉即时切换 |
 | 文档 | 13 页（本 wiki），已交付并同步至当前代码状态 |
 | **代码完成度** | **93%（42/45）**，另有 3 项部分实现 |
@@ -144,11 +144,11 @@
 | 2026-11-25 | 主界面改为三页签 | `MainWindow` 由单页 7 行 `Grid` + 底部 12 个按钮的 `WrapPanel` 改为「标题栏 + `TabControl` + 底部状态条」：常规 / 文件关联 / 诊断与日志。标题栏新增常驻关联徽标（未注册 / 部分注册 / 已注册），由 `AssociationBadgeState` 驱动；文件关联页新增状态卡片（三动词、扩展声明、程序路径、UserChoice 高亮）；日志与设置文件路径迁入诊断页；「保存设置」降为诊断页的手动重试入口，底部只留"更改即时生效"与关闭。页签与徽标样式定义在 `MainWindow.xaml` 的 `Window.Resources`，新增 16 条中英文案（`DefaultStrings` + `lang\en-us.lang`）。构建 0 警告 0 错误、单测 8/8 |
 | 2026-11-25 | 文档路径改为相对仓库根 | wiki 与 README 中不再出现 `F:\Code\PS1Run` 之类绝对路径，统一写作相对仓库根（`Ps1Run.App\...`、`scripts\...`、`Build\net48\...`），并在 [index](index.md) 增加「路径约定」说明；`11` 的重建脚本改为 `$root = (Resolve-Path '.').Path` |
 | 2026-11-25 | 主界面页签再调整 | 编辑器并入「执行程序」分组（PS5 / PS7 / 编辑器三行，`App.Separator` 分隔），分组标题改「执行程序与编辑器」；外观与语言移入「诊断与日志」页签（日志分组之后）。`AutoDetect()` 由"命中即覆盖"改为"只补空缺"：已配置且文件存在的 PS5 / PS7 / 编辑器保留原值并在探测结果里标注「保留原设置，未修改」，空值或失效路径才回填探测结果；新增 `Main.Detection.Kept` 文案，`Main.Detection.Idle` 补充说明。构建 0 警告 0 错误、单测 8/8；浅色中英文离屏渲染核对三页签布局 |
-| 2026-11-25 | 配置文件二合一 | `settings.json` 与 `config.lang` 合并为软件根目录唯一 `config.lang`：新增 `AppState`（Version + 运行设置 + 程序配置）与 `ConfigDocument`（统一读改写、原子写入、损坏备份、保留未知键），`SettingsStore`/`ConfigStore` 变为同一文件的读写门面、互不覆盖；旧 `%APPDATA%\Ps1Run\settings.json` 首次读取时一次性合并（当时保留原文件，后续改为合并成功后删除）；缺 `Version` 的旧文件读取时补写版本号。实测旧三字段 config.lang 自动升级并合并旧设置。构建 0 警告 0 错误、单测 8/8（新增「合并为同一文件」用例） |
+| 2026-11-25 | 配置文件二合一 | `settings.json` 与 `config.cfg` 合并为软件根目录唯一 `config.cfg`：新增 `AppState`（Version + 运行设置 + 程序配置）与 `ConfigDocument`（统一读改写、原子写入、损坏备份、保留未知键），`SettingsStore`/`ConfigStore` 变为同一文件的读写门面、互不覆盖；旧 `%APPDATA%\Ps1Run\settings.json` 首次读取时一次性合并（当时保留原文件，后续改为合并成功后删除）；缺 `Version` 的旧文件读取时补写版本号。实测旧三字段 config.cfg 自动升级并合并旧设置。构建 0 警告 0 错误、单测 8/8（新增「合并为同一文件」用例） |
 | 2026-11-25 | 移除诊断信息 + 页签改名 | 删除「诊断信息」分组与「刷新状态 / 复制诊断信息」按钮（信息与文件关联页、日志页、配置文件页重复），状态反馈改为窗口底部单行（无反馈时提示「更改即时生效」）；页签「诊断与日志」改名「日志与外观」；「设置与配置文件」改为「配置文件与版本」，只显示一份配置文件路径 + 程序版本 + 语言包版本；清理 20 余条失效中英文案。构建 0 警告 0 错误、单测 8/8 |
 | 2026-11-25 | 语言包版本号与提醒 | 语言文件首行新增 `Version`（当前 2），加载时剔除、不作为文案；`zh-cn.lang` 随程序发布并在缺失/无版本号/版本较旧时按内置文案重建（应用新版），其他语言包只读取、不覆盖（处理逻辑不变）；语言包缺版本号时：「日志与外观」页签挂「！」徽标、页内红字提醒 + 「重新生成 zh-cn.lang」，选择窗显示红字说明。新增 `AppInfo`（程序版本）与 `Warning.*`/`Picker.PackWarning` 文案。构建 0 警告 0 错误、单测 8/8（新增语言包升级与缺版本号用例）；浅色/深色中英文离屏渲染核对徽标、红字与三页签布局 |
 | 2026-11-25 | 选择窗修复 + 旧设置文件清理 | ① `PickerWindow` 构造时先按主屏工作区预居中、`SourceInitialized` 再按鼠标所在屏居中，消除从左上角闪现；高度改为随内容自适应（`SizeToContent=Height`，行 `*` 改 `Auto`），多组红字提醒下按钮仍完整可见。② `PickRequest` 携带 `AppSettings`，`PickerViewModel` 检查 PS5/PS7/编辑器配置路径是否存在，失效或探测不到时在选择窗显示红字（新增 4 条中英文案）。③ `ConfigDocument` 合并旧 `settings.json` 成功后删除原文件（写盘失败则保留重试），已有版本号时发现残留也清理；新增可注入旧文件路径的单测。构建 0 警告 0 错误、单测 8/8；离屏实测首屏坐标 730/336（1920×1032 工作区），红字与三按钮均完整 |
-| 2026-11-24 | 配置 / 主题 / 多语言 | ① 日志改到 `<软件根目录>\log\yyyyMMdd.log`，保留天数取 `config.lang` 的 `LogDays`，当天首次运行才清理；② 新增 `AppPaths`/`AppConfig`/`ConfigStore`（首次生成、原子写入、越界收敛、损坏备份），根目录不可写时三者一起退化到 `%APPDATA%\Ps1Run`；③ 新增 Light/Dark 主题字典与 `ThemeManager`（Auto 读 `AppsUseLightTheme`），主界面加"主题/语言/日志天数/配置文件"分组；④ 新增 `lang\*.lang` 语言包、`LocalizationManager`、`{loc:T}` 绑定、`d:DesignText.Text` 设计期文本，语言下拉即时切换；⑤ 新增第 6/7 组单测，8/8 通过；浅色/深色 + 中英文截图验证，进程内探针确认切换后已绑定文案立即更新且无自激 |
+| 2026-11-24 | 配置 / 主题 / 多语言 | ① 日志改到 `<软件根目录>\log\yyyyMMdd.log`，保留天数取 `config.cfg` 的 `LogDays`，当天首次运行才清理；② 新增 `AppPaths`/`AppConfig`/`ConfigStore`（首次生成、原子写入、越界收敛、损坏备份），根目录不可写时三者一起退化到 `%APPDATA%\Ps1Run`；③ 新增 Light/Dark 主题字典与 `ThemeManager`（Auto 读 `AppsUseLightTheme`），主界面加"主题/语言/日志天数/配置文件"分组；④ 新增 `lang\*.lang` 语言包、`LocalizationManager`、`{loc:T}` 绑定、`d:DesignText.Text` 设计期文本，语言下拉即时切换；⑤ 新增第 6/7 组单测，8/8 通过；浅色/深色 + 中英文截图验证，进程内探针确认切换后已绑定文案立即更新且无自激 |
 
 ---
 

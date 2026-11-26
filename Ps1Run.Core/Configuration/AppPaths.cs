@@ -4,7 +4,7 @@ using System.IO;
 namespace Ps1Run.Core.Configuration
 {
     /// <summary>
-    /// 程序根目录与四个约定路径：config.lang（程序配置 + 运行设置合并为一份）、rule.txt、lang\、log\（wiki 02 F5.x / F6.x）。
+    /// 程序根目录与四个约定路径：config.cfg（程序配置 + 运行设置合并为一份）、rule.txt、lang\、log\（wiki 02 F5.x / F6.x）。
     /// 默认取 exe 所在目录（绿色软件形态）；该目录不可写时（典型：装在 Program Files 且无提权）
     /// 三者一起退化到 %APPDATA%\Ps1Run，保证它们始终落在同一个可写根下。
     /// </summary>
@@ -41,7 +41,7 @@ namespace Ps1Run.Core.Configuration
         }
 
         /// <summary>唯一配置文件：程序配置（日志 / 主题 / 语言）与运行设置（运行方式 / 解释器 / 编辑器 / 规则标准）同文件。</summary>
-        public static string ConfigFile => Path.Combine(RootDirectory, "config.lang");
+        public static string ConfigFile => Path.Combine(RootDirectory, "config.cfg");
 
         /// <summary>脚本规则文件（5 列文本：路径|动作|大小|修改时间|HASH）。</summary>
         public static string RuleFile => Path.Combine(RootDirectory, "rule.txt");

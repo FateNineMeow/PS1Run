@@ -20,7 +20,7 @@ namespace Ps1Run.Core.Tests
         {
             var dir = Path.Combine(Path.GetTempPath(), "ps1run-tests-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
-            return Path.Combine(dir, "config.lang");
+            return Path.Combine(dir, "config.cfg");
         }
 
         private static void RoundTrip()
@@ -50,7 +50,7 @@ namespace Ps1Run.Core.Tests
         {
             var dir = Path.Combine(Path.GetTempPath(), "ps1run-tests-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
-            var path = Path.Combine(dir, "config.lang");
+            var path = Path.Combine(dir, "config.cfg");
 
             // 先写运行设置，再写程序配置：两者共用一个文件，互不覆盖
             new SettingsStore(path).Save(new AppSettings
@@ -109,7 +109,7 @@ namespace Ps1Run.Core.Tests
             var loaded = new SettingsStore(path).Load();
 
             Assert.Equal(RunMode.Ask, loaded.RunMode, "损坏时回退默认值");
-            var backups = Directory.GetFiles(Path.GetDirectoryName(path)!, "config.lang.bad.*");
+            var backups = Directory.GetFiles(Path.GetDirectoryName(path)!, "config.cfg.bad.*");
             Assert.True(backups.Length == 1, "损坏文件应被备份一次");
         }
 
@@ -117,7 +117,7 @@ namespace Ps1Run.Core.Tests
         {
             var dir = Path.GetDirectoryName(NewTempPath())!;
             var legacy = Path.Combine(dir, "settings.json");
-            var config = Path.Combine(dir, "config.lang");
+            var config = Path.Combine(dir, "config.cfg");
             File.WriteAllText(legacy, "{\"RunMode\":\"Edit\"}");
 
             var state = ConfigDocument.Load(config);

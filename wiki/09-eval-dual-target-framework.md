@@ -74,7 +74,7 @@
 | 目标 | 产物 | 体积 | 运行前提 |
 |---|---|---|---|
 | net48 | `Probe.exe` + `.exe.config` + `.pdb` | exe 约 7 KB | 系统内置 .NET Framework 4.8 |
-| net11.0-windows | `Probe.dll` + `Probe.exe`(apphost) + `runtimeconfig.lang` + `deps.json` | dll 6.5 KB，apphost 72 KB | 需装 .NET 11 Desktop Runtime |
+| net11.0-windows | `Probe.dll` + `Probe.exe`(apphost) + `runtimeconfig.json` + `deps.json` | dll 6.5 KB，apphost 72 KB | 需装 .NET 11 Desktop Runtime |
 
 **解读**：net48 产物是"单文件即成品"（框架在系统里）；net11 产物是"托管 dll + 启动器"，必须依赖运行时目录。这直接决定了分发难度差异。
 

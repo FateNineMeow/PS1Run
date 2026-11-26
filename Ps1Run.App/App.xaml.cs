@@ -29,7 +29,7 @@ namespace Ps1Run.App
             CoreBootstrap.Initialize();
             base.OnStartup(e);
 
-            // 程序配置（config.lang）：首次运行自动生成，含日志天数 / 主题 / 语言
+            // 程序配置（config.cfg）：首次运行自动生成，含日志天数 / 主题 / 语言
             var configStore = new ConfigStore();
             var config = configStore.Load();
 

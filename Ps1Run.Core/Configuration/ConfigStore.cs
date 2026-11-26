@@ -4,7 +4,7 @@ namespace Ps1Run.Core.Configuration
 {
     /// <summary>
     /// 程序配置（日志天数 / 主题 / 界面语言）的读写门面。
-    /// 与运行设置（<see cref="Settings.AppSettings"/>）合并存放在软件根目录的同一份 config.lang，
+    /// 与运行设置（<see cref="Settings.AppSettings"/>）合并存放在软件根目录的同一份 config.cfg，
     /// 由 <see cref="ConfigDocument"/> 统一读写，保存时不会覆盖对方的字段。
     /// </summary>
     public sealed class ConfigStore
@@ -14,7 +14,7 @@ namespace Ps1Run.Core.Configuration
             FilePath = string.IsNullOrEmpty(filePath) ? AppPaths.ConfigFile : filePath!;
         }
 
-        /// <summary>config.lang 的完整路径（软件根目录）。</summary>
+        /// <summary>config.cfg 的完整路径（软件根目录）。</summary>
         public string FilePath { get; }
 
         /// <summary>读取程序配置；文件不存在时按默认值生成。</summary>

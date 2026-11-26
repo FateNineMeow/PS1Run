@@ -130,7 +130,7 @@ The picker has a second checkbox, "Always do this for this script only". When ch
 
 ### Configuration and logging
 
-- `config.lang` is the single configuration file: program configuration (log retention, theme, language) plus behaviour settings (run mode, interpreter policy, custom paths, rule criteria) and a schema `Version`. It is created on first run, written atomically, and backed up then rebuilt if corrupted.
+- `config.cfg` is the single configuration file: program configuration (log retention, theme, language) plus behaviour settings (run mode, interpreter policy, custom paths, rule criteria) and a schema `Version`. It is created on first run, written atomically, and backed up then rebuilt if corrupted.
 - `rule.txt` stores "always for this script only" rules as five-column plain text, editable on the Script Rules tab.
 - Logs roll daily into `log\yyyyMMdd.log`, with levels plus session and process IDs. Retention is configurable, and expired files are pruned on the first run of each day.
 - The UI exposes "Open log folder", "View today's log", "Copy recent logs", and "Clean up now" for easy issue reporting.
@@ -224,7 +224,7 @@ The app is portable by default: everything lives in the application root, i.e. t
 
 | Path | Purpose |
 |---|---|
-| `config.lang` | The only configuration file: program configuration (log retention, theme, language) + behaviour settings (run mode, interpreter policy, custom paths) + schema version |
+| `config.cfg` | The only configuration file: program configuration (log retention, theme, language) + behaviour settings (run mode, interpreter policy, custom paths) + schema version |
 | `lang\zh-cn.lang` | Simplified Chinese language pack (shipped; rebuilt at startup when its version is missing or older) |
 | `lang\en-us.lang` | English language pack (shipped, never overwritten automatically) |
 | `rule.txt` | Per-script rules: `path|action|size|modified|hash` |
@@ -232,9 +232,9 @@ The app is portable by default: everything lives in the application root, i.e. t
 
 > **Breaking change**: legacy `config.json`, `%APPDATA%\Ps1Run\settings.json` and `lang\*.json` are no longer read, migrated, or deleted. Replace them manually using the formats below. Leftover files are harmless but ignored.
 
-> If the application root is not writable (typically installed under `Program Files` without elevation), `config.lang`, `rule.txt`, `lang\`, and `log\` **all** fall back together to `%APPDATA%\Ps1Run\`, with a WARN entry in the log.
+> If the application root is not writable (typically installed under `Program Files` without elevation), `config.cfg`, `rule.txt`, `lang\`, and `log\` **all** fall back together to `%APPDATA%\Ps1Run\`, with a WARN entry in the log.
 
-### config.lang
+### config.cfg
 
 ```text
 Version: 2,
@@ -282,7 +282,7 @@ Button.Browse: "Browse…",
 
 ## Logging and Diagnostics
 
-- Location: `log\yyyyMMdd.log` (retention controlled by `LogDays` in `config.lang`).
+- Location: `log\yyyyMMdd.log` (retention controlled by `LogDays` in `config.cfg`).
 - Levels: `DEBUG` / `INFO` / `WARN` / `ERROR`. Each line carries `[s:sessionId]` and `[p:processId]`, which makes multiple double-click launches easy to tell apart.
 - What gets recorded: startup arguments and exe path, encoding detection result, chosen interpreter and probe source, target process PID, exit code; cancellations, argument errors, missing files, process launch failures (including Win32 error codes), corrupted settings/config, association registration and elevation, and unhandled exceptions.
 - Cleanup: expired logs are deleted on the **first** run of each day, with a "daily cleanup" entry written. Later launches on the same day skip it.
@@ -337,7 +337,7 @@ The eight test groups:
 | Interpreter probing | PS5/PS7 probe chains and fallback order |
 | Settings persistence | key/value text round-trip, defaults on missing values, backup-and-rebuild on corruption, legacy JSON ignored |
 | Log write and retention | Level/session format, reading recent lines, retention policy, daily cleanup |
-| Program configuration | `config.lang` generation, range normalization, corruption recovery |
+| Program configuration | `config.cfg` generation, range normalization, corruption recovery |
 | Localization resources | `.lang` directory scan, default pack generation, missing-key fallback, legacy JSON ignored |
 | Script rules | five-column I/O, CRUD, mandatory path match, size/time/hash short-circuit, path validation |
 

@@ -28,11 +28,11 @@
 
 ### 配置与语言包改为纯文本
 
-- `config.json` → `config.lang`，语言包 `lang\*.json` → `lang\*.lang`，两者共用 `Key: "value",` 文本格式（首行 `Version: 2,`），解析器兼容行尾逗号有/无，支持常见转义。
+- `config.json` → `config.cfg`，语言包 `lang\*.json` → `lang\*.lang`，两者共用 `Key: "value",` 文本格式（首行 `Version: 2,`），解析器兼容行尾逗号有/无，支持常见转义。
 - 删除原 `SimpleJson`；项目不再包含任何自定义 JSON 解析代码或依赖。`.NET` 运行时自动生成的 `*.runtimeconfig.json` / `*.deps.json` 不受影响。
-- 配置 schema 与语言包版本均升到 `2`；旧格式文件不再迁移。`config.lang` 新增 `RuleMatchSize=1`、`RuleMatchModifiedTime=1`、`RuleMatchHash=0`。
-- `rule.txt` 跟随 `config.lang` 的 `%APPDATA%` 回退规则，四者始终位于同一可写根目录。
-- 配置文件损坏仍备份为 `config.lang.bad.*` 后重建；语言包缺版本 / 低版本的徽标、红字与重建按钮保持原逻辑，按钮文案改为「重新生成 zh-cn.lang」。
+- 配置 schema 与语言包版本均升到 `2`；旧格式文件不再迁移。`config.cfg` 新增 `RuleMatchSize=1`、`RuleMatchModifiedTime=1`、`RuleMatchHash=0`。
+- `rule.txt` 跟随 `config.cfg` 的 `%APPDATA%` 回退规则，四者始终位于同一可写根目录。
+- 配置文件损坏仍备份为 `config.cfg.bad.*` 后重建；语言包缺版本 / 低版本的徽标、红字与重建按钮保持原逻辑，按钮文案改为「重新生成 zh-cn.lang」。
 
 ### 验证
 

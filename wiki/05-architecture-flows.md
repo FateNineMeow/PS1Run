@@ -1,6 +1,6 @@
 # 05 架构与关键流程
 
-> 状态横幅：本页描述的架构**主体已落地为代码**。截至 2026-11-24，参数解析、无窗口直通、选择窗（含 Topmost）、探测与分发链路、解释器缺失人工指定、SHOpenWithDialog / HKLM 提升、分级日志、config.lang / 主题 / 多语言均已实现；双目标构建与 8/8 组单测通过，系统级实机验收待人工执行。状态真源见 [02](02-feature-matrix.md) / [04](04-progress.md)；本页标注"设计"的条目（如注册互斥量）未落地。
+> 状态横幅：本页描述的架构**主体已落地为代码**。截至 2026-11-24，参数解析、无窗口直通、选择窗（含 Topmost）、探测与分发链路、解释器缺失人工指定、SHOpenWithDialog / HKLM 提升、分级日志、config.cfg / 主题 / 多语言均已实现；双目标构建与 8/8 组单测通过，系统级实机验收待人工执行。状态真源见 [02](02-feature-matrix.md) / [04](04-progress.md)；本页标注"设计"的条目（如注册互斥量）未落地。
 
 ---
 
@@ -88,7 +88,7 @@ OnStartup(argv)
  │
  ├─ CoreBootstrap.Initialize()（net11 代码页提供程序）
  │
- ├─ ConfigStore.Load()：<软件根目录>\config.lang（首次生成 LogDays/Theme/Language）
+ ├─ ConfigStore.Load()：<软件根目录>\config.cfg（首次生成 LogDays/Theme/Language）
  │
  ├─ DiagnosticsLog.BeginSession(args, LogDays)
  │    └─ 当天第一次运行 → 清理超过 LogDays 的旧日志

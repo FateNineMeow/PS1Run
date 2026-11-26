@@ -24,7 +24,7 @@ namespace Ps1Run.Core.Tests
         private static void CreatesDefaultFileOnFirstLoad()
         {
             var dir = NewTempDirectory();
-            var path = Path.Combine(dir, "config.lang");
+            var path = Path.Combine(dir, "config.cfg");
             var store = new ConfigStore(path);
 
             var config = store.Load();
@@ -32,7 +32,7 @@ namespace Ps1Run.Core.Tests
             Assert.Equal(7, config.LogDays, "默认日志天数为 7");
             Assert.Equal(AppTheme.Auto, config.Theme, "默认主题为 Auto");
             Assert.Equal("zh-cn", config.Language, "默认语言为 zh-cn");
-            Assert.True(File.Exists(path), "首次读取应生成 config.lang");
+            Assert.True(File.Exists(path), "首次读取应生成 config.cfg");
 
             var text = File.ReadAllText(path);
             Assert.True(text.Contains("Version: 2,"), "生成的配置应含版本号 2");
@@ -46,7 +46,7 @@ namespace Ps1Run.Core.Tests
         private static void RoundTripsValues()
         {
             var dir = NewTempDirectory();
-            var path = Path.Combine(dir, "config.lang");
+            var path = Path.Combine(dir, "config.cfg");
             var store = new ConfigStore(path);
 
             store.Save(new AppConfig { LogDays = 30, Theme = AppTheme.Dark, Language = "en-us" });
@@ -60,7 +60,7 @@ namespace Ps1Run.Core.Tests
         private static void NormalizesOutOfRange()
         {
             var dir = NewTempDirectory();
-            var path = Path.Combine(dir, "config.lang");
+            var path = Path.Combine(dir, "config.cfg");
             var store = new ConfigStore(path);
 
             store.Save(new AppConfig { LogDays = 0, Theme = AppTheme.Light, Language = "  EN-US  " });
@@ -73,13 +73,13 @@ namespace Ps1Run.Core.Tests
         private static void RecoversFromCorruptedFile()
         {
             var dir = NewTempDirectory();
-            var path = Path.Combine(dir, "config.lang");
+            var path = Path.Combine(dir, "config.cfg");
             File.WriteAllText(path, "这不是键值文本");
 
             var config = new ConfigStore(path).Load();
 
             Assert.Equal(7, config.LogDays, "损坏时应回退默认值");
-            var backups = Directory.GetFiles(dir, "config.lang.bad.*");
+            var backups = Directory.GetFiles(dir, "config.cfg.bad.*");
             Assert.Equal(1, backups.Length, "损坏文件应被备份");
         }
     }

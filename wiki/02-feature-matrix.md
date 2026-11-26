@@ -28,7 +28,7 @@
 
 > 🟨 明细：F1.8（注销未恢复 `.ps1\(默认)` 原值、未实现 `association-backup.lang（预留）`）、F3.2（Store 版 PS7 探测未实现）、F4.6（编辑器"全部失败时自动弹窗指定"未实现，仅主界面手工指定）；三者均已登记在 [04 D16–D21](04-progress.md#3-差距清单需求-vs-现状)。
 
-> 自动化覆盖：`Ps1Run.Core.Tests` 8/8 组通过，覆盖编码判型 6 类输入、参数优先级与冲突、PS5/PS7 探测回退、设置键值文本往返与损坏恢复、日志写入/读取/保留策略与「每天首次运行才清理」、config.lang 往返/收敛/损坏恢复、语言包生成与解析。
+> 自动化覆盖：`Ps1Run.Core.Tests` 8/8 组通过，覆盖编码判型 6 类输入、参数优先级与冲突、PS5/PS7 探测回退、设置键值文本往返与损坏恢复、日志写入/读取/保留策略与「每天首次运行才清理」、config.cfg 往返/收敛/损坏恢复、语言包生成与解析。
 
 ---
 
@@ -110,7 +110,7 @@
 | 编号 | 功能点 | 实现落点 | 关键 API | 状态 | 验收要点 |
 |---|---|---|---|---|---|
 | F5.1 | 设置模型 | `Ps1Run.Core\Settings\AppSettings.cs` | `record`（net48 需 `IsExternalInit` 垫片） | 🔵 | 字段覆盖 F3.3/F3.6/F4.6/F2.2 全部选项 |
-| F5.2 | 设置读写 | `Ps1Run.Core\Settings\SettingsStore.cs` + `Ps1Run.Core\Configuration\ConfigDocument.cs` | 与程序配置合并到软件根目录 `config.lang`，固定 schema 轻量序列化（零依赖） | 🔵 | 设置与 config.lang 合并为一份文件（`AppState`：Version + 运行设置 + 程序配置），两个 Store 都经 `ConfigDocument` 读改写自己的键、互不覆盖；旧 `%APPDATA%\Ps1Run\settings.json` 首次读取时一次性合并，写入成功后删除原文件（失败则保留重试）；缺失用默认值、损坏备份 `.bad.*` 并重建、原子写入；设置变更自动保存 |
+| F5.2 | 设置读写 | `Ps1Run.Core\Settings\SettingsStore.cs` + `Ps1Run.Core\Configuration\ConfigDocument.cs` | 与程序配置合并到软件根目录 `config.cfg`，固定 schema 轻量序列化（零依赖） | 🔵 | 设置与 config.cfg 合并为一份文件（`AppState`：Version + 运行设置 + 程序配置），两个 Store 都经 `ConfigDocument` 读改写自己的键、互不覆盖；旧 `%APPDATA%\Ps1Run\settings.json` 首次读取时一次性合并，写入成功后删除原文件（失败则保留重试）；缺失用默认值、损坏备份 `.bad.*` 并重建、原子写入；设置变更自动保存 |
 | F5.3 | 原子写入 | `SettingsStore.Save()` | 写临时文件 + `File.Replace` | 🔵 | 断电/崩溃不产生半截文件 |
 | F5.4 | 关联状态快照 | `AssociationService.GetStatus()` | 汇总：ProgId 存在性、动词命令、UserChoice 指向、PS/编辑器可用性 | 🔵 | 主界面能一眼看出"是否生效、为什么没生效" |
 
@@ -120,7 +120,7 @@
 
 | 编号 | 功能点 | 实现落点 | 状态 | 验收要点 |
 |---|---|---|---|---|
-| F6.1 | 轻量日志（分级 + 会话） | `Ps1Run.Core\Infrastructure\DiagnosticsLog.cs`（`<软件根目录>\log\yyyyMMdd.log`，按天滚动，保留天数取 config.lang 的 `LogDays`，默认 7 天） | 🔵 | `DEBUG/INFO/WARN/ERROR` 四级；每条带 `[s:会话ID]` 与 `[p:进程ID]`；记录参数、判定编码、选中解释器、进程 PID、退出码；Ask 取消记 `INFO`，异常记类型与消息 |
+| F6.1 | 轻量日志（分级 + 会话） | `Ps1Run.Core\Infrastructure\DiagnosticsLog.cs`（`<软件根目录>\log\yyyyMMdd.log`，按天滚动，保留天数取 config.cfg 的 `LogDays`，默认 7 天） | 🔵 | `DEBUG/INFO/WARN/ERROR` 四级；每条带 `[s:会话ID]` 与 `[p:进程ID]`；记录参数、判定编码、选中解释器、进程 PID、退出码；Ask 取消记 `INFO`，异常记类型与消息 |
 | F6.2 | ~~诊断信息复制~~（已移除） | — | ⚪ | 与文件关联页、日志页、配置文件页重复，已删除"诊断信息"分组与"刷新状态 / 复制诊断信息"按钮；状态反馈改为窗口底部单行；需要日志内容时用 F6.5 的"复制最近日志" |
 | F6.3 | 启动失败的可读提示 | `App.xaml.cs` 全局 `DispatcherUnhandledException` | 🔵 | 记录日志、弹中文提示并标记 `Handled`；参数非法/文件缺失/进程启动失败均有中文提示与退出码 |
 | F6.4 | 打开日志目录 | `MainViewModel.OpenLogFolder()` + 主界面"打开日志目录"按钮 | 🔵 | 在资源管理器中打开 `<软件根目录>\log\`；目录不存在时自动创建 |
@@ -133,14 +133,14 @@
 
 | 编号 | 功能点 | 实现落点 | 状态 | 验收要点 |
 |---|---|---|---|---|
-| F7.1 | config.lang 持久化（唯一配置文件） | `Ps1Run.Core\Configuration\ConfigStore.cs`、`AppConfig.cs`、`AppState.cs`、`ConfigDocument.cs`；默认内容含 `Version`、`RunMode`、`PowerShellPolicy`、三条自定义路径、`LogDays`、`Theme`、`Language`、三个规则标准 | 🔵 | 纯文本键值格式（`Key: "value",`，首行 `Version: 2,`），与语言包共用 `KeyValueTextParser`；首次运行自动生成；原子写入（临时文件 + 替换）；损坏时备份为 `config.lang.bad.时间戳` 并重建默认；旧 JSON 配置 / 设置不再读取、不迁移；`LogDays` 收敛到 1–365，非法值回退 7 |
+| F7.1 | config.cfg 持久化（唯一配置文件） | `Ps1Run.Core\Configuration\ConfigStore.cs`、`AppConfig.cs`、`AppState.cs`、`ConfigDocument.cs`；默认内容含 `Version`、`RunMode`、`PowerShellPolicy`、三条自定义路径、`LogDays`、`Theme`、`Language`、三个规则标准 | 🔵 | 纯文本键值格式（`Key: "value",`，首行 `Version: 2,`），与语言包共用 `KeyValueTextParser`；首次运行自动生成；原子写入（临时文件 + 替换）；损坏时备份为 `config.cfg.bad.时间戳` 并重建默认；旧 JSON 配置 / 设置不再读取、不迁移；`LogDays` 收敛到 1–365，非法值回退 7 |
 | F7.2 | 路径约定与可写退化 | `Ps1Run.Core\Configuration\AppPaths.cs` | 🔵 | 根目录取 exe 所在目录；不可写时 config / rule.txt / lang / log 一起退化到 `%APPDATA%\Ps1Run` 并记 WARN |
 | F7.3 | 日志天数可配 + 每日清理 | `MainViewModel.LogDaysText` + `DiagnosticsLog.Prune` | 🔵 | 界面可改（1–365，合法即落盘）；"立即清理"按当前天数手动清理；每天首次运行自动清理（见 F6.6） |
 | F7.4 | 主题（深色/浅色/自动） | `Ps1Run.App\Themes\Light.xaml`、`Dark.xaml`、`Services\ThemeManager.cs`；主界面"主题"下拉 | 🔵 | 切换立即生效（替换 App 级主题字典，`DynamicResource` 全量重绘）；`Auto` 读 `HKCU\...\Themes\Personalize\AppsUseLightTheme`；窗口、按钮、输入框、下拉框、复选框、分组框均随主题变化 |
 | F7.5 | i18n 语言包与版本号 | `Ps1Run.Core\Localization\*`（`DefaultStrings`/`LanguageCatalog`）、`Ps1Run.App\Localization\*`（`LocalizationManager`/`TExtension`） | 🔵 | 文案存放在 `<软件根目录>\lang\<code>.lang`；语言包首行写 `Version`（当前 2）；`zh-cn.lang` 随程序发布，缺失/无版本号/版本较旧时启动按内置文案重建（应用新版），其他语言包只读取不覆盖；缺键回退中文再回退键名；`{loc:T Key}` 绑定 |
-| F7.6 | 语言下拉与即时切换 | 主界面"语言"下拉（`LanguageIndex`）+ `LocalizationManager.Load()` | 🔵 | 扫描 `lang\*.lang` 生成选项（zh-cn 固定第一，随程序附带 `en-us.lang`）；选择后立即重新加载并刷新已绑定文案、写入 config.lang，无需重启；语言包缺版本号时「日志与外观」页签显示「！」徽标 + 页内红字提醒，选择窗同步红字，并可用「重新生成 zh-cn.lang」修复 |
+| F7.6 | 语言下拉与即时切换 | 主界面"语言"下拉（`LanguageIndex`）+ `LocalizationManager.Load()` | 🔵 | 扫描 `lang\*.lang` 生成选项（zh-cn 固定第一，随程序附带 `en-us.lang`）；选择后立即重新加载并刷新已绑定文案、写入 config.cfg，无需重启；语言包缺版本号时「日志与外观」页签显示「！」徽标 + 页内红字提醒，选择窗同步红字，并可用「重新生成 zh-cn.lang」修复 |
 | F7.7 | 设计期文本 | `Ps1Run.App\Localization\DesignText.cs`（`d:DesignText.Text`） | 🔵 | 设计器里显示文本、运行时不参与渲染；取值为 `zh-cn.lang` 对应内容 |
-| F8.1 | 脚本规则（仅此脚本） | `Ps1Run.Core\Rules\ScriptRule*`、`Ps1Run.Core\Dispatch\LaunchDispatcher.cs` | 🔵 | `rule.txt` 5 列：路径 / 动作 / 大小 / 修改时间 / HASH；路径必匹配，其余标准由 config.lang 全局控制；大小 → 修改时间 → HASH 短路，HASH 默认关闭；命中直接分发，`--ask` 仍强制弹窗；原子写入 + 命名互斥体，坏行跳过、失败开放 |
+| F8.1 | 脚本规则（仅此脚本） | `Ps1Run.Core\Rules\ScriptRule*`、`Ps1Run.Core\Dispatch\LaunchDispatcher.cs` | 🔵 | `rule.txt` 5 列：路径 / 动作 / 大小 / 修改时间 / HASH；路径必匹配，其余标准由 config.cfg 全局控制；大小 → 修改时间 → HASH 短路，HASH 默认关闭；命中直接分发，`--ask` 仍强制弹窗；原子写入 + 命名互斥体，坏行跳过、失败开放 |
 | F8.2 | 规则编辑页与选择窗 | `Ps1Run.App\Views\RuleEditorWindow.xaml`、`Views\MainWindow.xaml`（脚本规则页）、`Views\PickerWindow.xaml` | 🔵 | 主窗体「常规 / 脚本规则 / 文件关联 / 日志与外观」四页签；页面增删改查 + 搜索 + 保存 + 脏数据刷新确认；独立弹窗支持浏览或直接输入 `.ps1` 路径，保存校验扩展名与文件存在；选择窗两个「记住」复选框互斥，取消不写任何数据 |
 
 > 说明：WPF 编译器不支持 `d:Text="…"` 这种省略归属类型的短写法（会报 MC3005/MC3072），因此统一写成 `d:DesignText.Text="…"`，语义与需求一致：**仅设计期可见，运行期文案来自语言包**。
@@ -150,7 +150,7 @@
 ## 当前未通过完整验收的主要原因
 
 1. **系统级操作未自动执行**：注册表注册/注销会改变用户默认程序，双击分发与多屏弹窗需要真实桌面交互；这些验收项保留给人工执行，避免误改系统状态。
-2. **自动化测试已覆盖核心逻辑**：`Ps1Run.Core.Tests` 8/8 组通过，覆盖编码判型、参数解析、解释器探测、设置持久化、日志写入/读取/保留与每日清理、config.lang 往返/收敛/损坏恢复、语言包生成与解析；但 UI 交互（主题重绘、语言即时切换的视觉表现）与注册表写入没有自动化用例，已用截图与进程内探针人工验证。
+2. **自动化测试已覆盖核心逻辑**：`Ps1Run.Core.Tests` 8/8 组通过，覆盖编码判型、参数解析、解释器探测、设置持久化、日志写入/读取/保留与每日清理、config.cfg 往返/收敛/损坏恢复、语言包生成与解析；但 UI 交互（主题重绘、语言即时切换的视觉表现）与注册表写入没有自动化用例，已用截图与进程内探针人工验证。
 3. **设计稿中描述但代码未落地的项**：关联回滚备份、Store 版 PS7 探测、编辑器自动弹窗指定、UserChoice 高级移除、注册互斥量、降级界面入口，已在 [04 D16–D21](04-progress.md#3-差距清单需求-vs-现状) 登记。
 
 ---
@@ -187,7 +187,7 @@ F5.1/F5.2 (设置模型)
 | R7 双版本评估 | — | 已在 [09](09-eval-dual-target-framework.md) 给出结论，且正式工程双目标构建通过 |
 | R8 常驻评估 | — | 已在 [10](10-eval-background-residency.md) 给出结论 |
 | R9 日志与诊断（新增需求） | F6.1–F6.6 | 日志改到软件根目录、天数可配、每日首次运行清理；目录/查看/复制已落地；8/8 组单测覆盖 |
-| R10 配置 / 主题 / 多语言（新增需求） | F7.1–F7.7 | config.lang、深浅色主题、lang\*.lang 语言包与下拉即时切换、设计期文本均已落地 |
+| R10 配置 / 主题 / 多语言（新增需求） | F7.1–F7.7 | config.cfg、深浅色主题、lang\*.lang 语言包与下拉即时切换、设计期文本均已落地 |
 
 ---
 

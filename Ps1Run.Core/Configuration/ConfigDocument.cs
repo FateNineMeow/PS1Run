@@ -9,7 +9,7 @@ using Ps1Run.Core.Settings;
 namespace Ps1Run.Core.Configuration
 {
     /// <summary>
-    /// 单文件配置读写（软件根目录 config.lang，纯文本键值格式，与语言包同款），
+    /// 单文件配置读写（软件根目录 config.cfg，纯文本键值格式，与语言包同款），
     /// 供 <see cref="ConfigStore"/> 与 <see cref="SettingsStore"/> 共用：
     /// 两者操作同一份文件的不同字段，写盘时先读回文件、只改自己负责的键，避免互相覆盖。
     /// 缺失字段用默认值、损坏文件备份重建、临时文件 + 替换的原子写入。
@@ -164,12 +164,12 @@ namespace Ps1Run.Core.Configuration
             }
             catch (IOException ex)
             {
-                DiagnosticsLog.Warn("生成默认 config.lang 失败：" + ex.Message);
+                DiagnosticsLog.Warn("生成默认 config.cfg 失败：" + ex.Message);
                 return false;
             }
             catch (UnauthorizedAccessException ex)
             {
-                DiagnosticsLog.Warn("生成默认 config.lang 失败：" + ex.Message);
+                DiagnosticsLog.Warn("生成默认 config.cfg 失败：" + ex.Message);
                 return false;
             }
         }
@@ -187,7 +187,7 @@ namespace Ps1Run.Core.Configuration
                 var backup = filePath + ".bad." + stamp;
                 File.Copy(filePath, backup, overwrite: false);
                 DiagnosticsLog.Warn(
-                    "config.lang 损坏，已备份并重建默认值：file=" + filePath
+                    "config.cfg 损坏，已备份并重建默认值：file=" + filePath
                     + " backup=" + backup + " reason=" + reason);
             }
             catch (IOException)

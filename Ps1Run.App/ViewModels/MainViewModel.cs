@@ -24,7 +24,7 @@ namespace Ps1Run.App.ViewModels
 {
     /// <summary>
     /// 主界面视图模型（wiki 02 F2.7 / F5.4 / F7.x）。
-    /// 设置只有一份：软件根目录 config.lang（程序配置 + 运行设置 + 版本号）。
+    /// 设置只有一份：软件根目录 config.cfg（程序配置 + 运行设置 + 版本号）。
     /// </summary>
     public sealed class MainViewModel : INotifyPropertyChanged
     {
@@ -262,7 +262,7 @@ namespace Ps1Run.App.ViewModels
             }
         }
 
-        /// <summary>脚本规则判断标准：文件路径始终匹配，以下三项来自 config.lang。</summary>
+        /// <summary>脚本规则判断标准：文件路径始终匹配，以下三项来自 config.cfg。</summary>
         public bool RuleMatchSize
         {
             get => _settings.RuleMatchSize;
@@ -494,7 +494,7 @@ namespace Ps1Run.App.ViewModels
             && _associationStatus.UserChoice.HasOverride
             && !_associationStatus.UserChoice.PointsToUs;
 
-        /// <summary>判断标准变化：立即写 config.lang，并按新标准重写全部规则指纹。</summary>
+        /// <summary>判断标准变化：立即写 config.cfg，并按新标准重写全部规则指纹。</summary>
         private void SetRuleCriteria(bool value, string propertyName, Func<AppSettings, AppSettings> update)
         {
             _settings = update(_settings);
@@ -990,7 +990,7 @@ namespace Ps1Run.App.ViewModels
             }
         }
 
-        /// <summary>用默认程序打开 config.lang，方便直接改 LogDays / Theme / Language。</summary>
+        /// <summary>用默认程序打开 config.cfg，方便直接改 LogDays / Theme / Language。</summary>
         public void OpenConfigFile()
         {
             try
@@ -1035,19 +1035,19 @@ namespace Ps1Run.App.ViewModels
             {
                 _configStore.Save(_config);
                 DiagnosticsLog.Info(
-                    "config.lang 已保存：file=" + _configStore.FilePath
+                    "config.cfg 已保存：file=" + _configStore.FilePath
                     + " logDays=" + _config.LogDays.ToString(CultureInfo.InvariantCulture)
                     + " theme=" + _config.Theme
                     + " language=" + _config.Language);
             }
             catch (IOException ex)
             {
-                DiagnosticsLog.Error("保存 config.lang 失败：" + ex.Message, ex);
+                DiagnosticsLog.Error("保存 config.cfg 失败：" + ex.Message, ex);
                 StatusText = L("Main.SaveFailed") + ex.Message;
             }
             catch (UnauthorizedAccessException ex)
             {
-                DiagnosticsLog.Error("保存 config.lang 失败：" + ex.Message, ex);
+                DiagnosticsLog.Error("保存 config.cfg 失败：" + ex.Message, ex);
                 StatusText = L("Main.SaveFailed") + ex.Message;
             }
         }

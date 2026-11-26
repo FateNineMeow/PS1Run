@@ -539,7 +539,7 @@
                             </Grid>
                         </GroupBox>
 
-                        <!-- 配置文件与版本：配置统一为 config.lang 一份；旧 JSON 文件已废弃 -->
+                        <!-- 配置文件与版本：配置统一为 config.cfg 一份；旧 JSON 文件已废弃 -->
                         <GroupBox Header="{loc:T Group.SettingsFiles}" Padding="12">
                             <Grid>
                                 <Grid.ColumnDefinitions>
