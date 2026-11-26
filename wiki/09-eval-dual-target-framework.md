@@ -2,7 +2,7 @@
 
 > 评估对象：需求 3.1「是否支持 .NET 4.8 与 .NET 11 双版本实现，若可行则给出双版本生成方案」。
 > 评估方式：在本机用探针工程**实际构建**，不是纸面推演。所有数据采集于 2026-11-24。
-> 状态横幅：结论已落地为正式工程（`Ps1Run.slnx` + 两个多目标工程 + 单目标测试工程），双目标构建 0 警告 0 错误、7/7 组单测通过；探针工程仅保留为历史验证记录，已从交付树移除。正式实现的路径差异见 §4.2、§4.5 与 [03](03-project-structure.md#51-directorybuildprops公共部分)。
+> 状态横幅：结论已落地为正式工程（`Ps1Run.slnx` + 两个多目标工程 + 单目标测试工程），双目标构建 0 警告 0 错误、8/8 组单测通过；探针工程仅保留为历史验证记录，已从交付树移除。正式实现的路径差异见 §4.2、§4.5 与 [03](03-project-structure.md#51-directorybuildprops公共部分)。
 
 ---
 
@@ -74,7 +74,7 @@
 | 目标 | 产物 | 体积 | 运行前提 |
 |---|---|---|---|
 | net48 | `Probe.exe` + `.exe.config` + `.pdb` | exe 约 7 KB | 系统内置 .NET Framework 4.8 |
-| net11.0-windows | `Probe.dll` + `Probe.exe`(apphost) + `runtimeconfig.json` + `deps.json` | dll 6.5 KB，apphost 72 KB | 需装 .NET 11 Desktop Runtime |
+| net11.0-windows | `Probe.dll` + `Probe.exe`(apphost) + `runtimeconfig.lang` + `deps.json` | dll 6.5 KB，apphost 72 KB | 需装 .NET 11 Desktop Runtime |
 
 **解读**：net48 产物是"单文件即成品"（框架在系统里）；net11 产物是"托管 dll + 启动器"，必须依赖运行时目录。这直接决定了分发难度差异。
 
@@ -133,7 +133,7 @@ namespace System.Runtime.CompilerServices
    └─ Ps1Run.Core.Tests.csproj
 ```
 
-两个产品工程都多目标，**测试工程只跑一个目标**（`net11.0-windows`，通过 `TargetFramework` + 空 `TargetFrameworks` 覆盖公共属性），避免测试矩阵翻倍；当前 7/7 组测试全部通过。
+两个产品工程都多目标，**测试工程只跑一个目标**（`net11.0-windows`，通过 `TargetFramework` + 空 `TargetFrameworks` 覆盖公共属性），避免测试矩阵翻倍；当前 8/8 组测试全部通过。
 
 ### 4.2 `Directory.Build.props`
 
@@ -265,7 +265,7 @@ dotnet publish Ps1Run.App -c Release -f net11.0-windows -o Build\net11
 | net48 已是"冻结"平台 | 中 | 不再有新语言运行时特性，长期看会落后 | 核心逻辑保持在 `netstandard2.0` 可用的 API 子集内，便于将来加 `net8.0-windows` 目标 |
 | 双目标导致构建时间翻倍 | 低 | 两个目标串行编译 | 可接受；CI 可并行 |
 | 差异点维护成本 | 中 | 新代码可能不小心用了 net11-only API | `Ps1Run.Core` 的最小编译目标设 net48，**net48 编不过就说明踩线**，天然形成约束 |
-| 测试只覆盖一个目标 | 低 | 当前 7/7 组测试仅在 net11 目标运行，net48 路径未被自动化测试覆盖；但两个目标均构建通过且主界面/Ask 弹窗已在 net48 上做过启动验证 | 后续对 `ScriptEncodingDetector`、`RegistryAppPathReader` 在 net48 上补一次冒烟 |
+| 测试只覆盖一个目标 | 低 | 当前 8/8 组测试仅在 net11 目标运行，net48 路径未被自动化测试覆盖；但两个目标均构建通过且主界面/Ask 弹窗已在 net48 上做过启动验证 | 后续对 `ScriptEncodingDetector`、`RegistryAppPathReader` 在 net48 上补一次冒烟 |
 
 ---
 

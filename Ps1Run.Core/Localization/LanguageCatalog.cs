@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Ps1Run.Core.Infrastructure;
 
 namespace Ps1Run.Core.Localization
 {
@@ -12,7 +13,8 @@ namespace Ps1Run.Core.Localization
 
     /// <summary>
     /// lang 目录的语言包管理（wiki 02 F7.x）：
-    /// 扫描 *.json 得到可选语言；缺省时生成 zh-cn.json；解析单个语言包。
+    /// 只扫描 *.lang 纯文本（Version: 2, Key: "value",）；缺省时生成 zh-cn.lang；解析单个语言包。
+    /// 旧 *.json 语言包不读取、不迁移，仅在启动时记一条 WARN。
     /// </summary>
     public static class LanguageCatalog
     {
@@ -24,9 +26,16 @@ namespace Ps1Run.Core.Localization
         /// <summary>当前程序期望的语言包版本。</summary>
         public const int CurrentVersion = DefaultStrings.PackVersion;
 
+        /// <summary>语言包文件扩展名（不含点）。</summary>
+        public const string Extension = ".lang";
+
+        /// <summary>构造语言包路径。</summary>
+        public static string GetFilePath(string languageDirectory, string code) =>
+            Path.Combine(languageDirectory, Normalize(code) + Extension);
+
         /// <summary>
-        /// 确保 lang 目录存在，且 zh-cn.json 存在并带当前版本号：
-        /// 缺失 → 按内置文案生成；缺少版本号或版本较旧 → 按当前内置文案重建（即"应用新版 zh-cn.json"）。
+        /// 确保 lang 目录存在，且 zh-cn.lang 存在并带当前版本号：
+        /// 缺失 → 按内置文案生成；缺少版本号或版本较旧 → 按当前内置文案重建。
         /// 其他语言包不做任何改写，只在使用时读取。
         /// </summary>
         public static void EnsureDefaultFiles(string languageDirectory)
@@ -37,8 +46,9 @@ namespace Ps1Run.Core.Localization
             }
 
             Directory.CreateDirectory(languageDirectory);
+            WarnLegacyJson(languageDirectory);
 
-            var defaultFile = Path.Combine(languageDirectory, DefaultStrings.DefaultLanguageCode + ".json");
+            var defaultFile = GetFilePath(languageDirectory, DefaultStrings.DefaultLanguageCode);
             if (!File.Exists(defaultFile))
             {
                 WriteDefaultFile(defaultFile);
@@ -52,8 +62,8 @@ namespace Ps1Run.Core.Localization
             }
 
             WriteDefaultFile(defaultFile);
-            Infrastructure.DiagnosticsLog.Info(
-                "语言包 zh-cn.json 已升级到 v" + CurrentVersion.ToString(CultureInfo.InvariantCulture)
+            DiagnosticsLog.Info(
+                "语言包 zh-cn.lang 已升级到 v" + CurrentVersion.ToString(CultureInfo.InvariantCulture)
                 + (version is null ? "（原文件无版本号）" : "（原版本 v" + version.Value.ToString(CultureInfo.InvariantCulture) + "）")
                 + "：" + defaultFile);
         }
@@ -61,7 +71,13 @@ namespace Ps1Run.Core.Localization
         /// <summary>按内置中文写入语言文件（含版本号）。</summary>
         public static void WriteDefaultFile(string filePath)
         {
-            File.WriteAllText(filePath, DefaultStrings.ToJson(), Utf8NoBom);
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllText(filePath, DefaultStrings.ToLang(), Utf8NoBom);
         }
 
         /// <summary>读取语言包版本号；文件缺失、损坏或无版本号时返回 null。</summary>
@@ -74,7 +90,7 @@ namespace Ps1Run.Core.Localization
                     return null;
                 }
 
-                var parsed = Infrastructure.SimpleJson.ParseObject(File.ReadAllText(filePath, Encoding.UTF8));
+                var parsed = KeyValueTextParser.Parse(File.ReadAllText(filePath, Encoding.UTF8));
                 return GetVersion(parsed);
             }
             catch (FormatException)
@@ -91,7 +107,7 @@ namespace Ps1Run.Core.Localization
             }
         }
 
-        /// <summary>扫描 lang 目录下的语言包；目录不存在时返回仅含 zh-cn 的列表。</summary>
+        /// <summary>扫描 lang 目录下的 .lang 语言包；目录不存在时返回仅含 zh-cn 的列表。</summary>
         public static IReadOnlyList<LanguageOption> Discover(string languageDirectory)
         {
             var options = new List<LanguageOption>();
@@ -100,7 +116,8 @@ namespace Ps1Run.Core.Localization
             {
                 if (!string.IsNullOrEmpty(languageDirectory) && Directory.Exists(languageDirectory))
                 {
-                    foreach (var file in Directory.GetFiles(languageDirectory, "*.json").OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+                    foreach (var file in Directory.GetFiles(languageDirectory, "*" + Extension)
+                                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
                     {
                         var code = Path.GetFileNameWithoutExtension(file);
                         if (string.IsNullOrWhiteSpace(code))
@@ -167,7 +184,7 @@ namespace Ps1Run.Core.Localization
                     return false;
                 }
 
-                var parsed = Infrastructure.SimpleJson.ParseObject(File.ReadAllText(filePath, Encoding.UTF8));
+                var parsed = KeyValueTextParser.Parse(File.ReadAllText(filePath, Encoding.UTF8));
                 if (parsed.Count == 0)
                 {
                     error = "语言包为空：" + filePath;
@@ -206,19 +223,16 @@ namespace Ps1Run.Core.Localization
         /// <summary>从已解析的键值中取版本号；不存在或非整数时返回 null。</summary>
         private static int? GetVersion(Dictionary<string, string> values)
         {
-            if (values.TryGetValue(VersionKey, out var raw))
+            if (values.TryGetValue(VersionKey, out var raw)
+                && int.TryParse(raw.Trim().Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
             {
-                var text = raw.Trim().Trim('"');
-                if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
-                {
-                    return parsed;
-                }
+                return parsed;
             }
 
             return null;
         }
 
-        /// <summary>规范化语言代码：空值回退 zh-cn，其余小写。</summary>
+        /// <summary>规范语言代码：空值回退 zh-cn，其余小写。</summary>
         public static string Normalize(string? code)
         {
             if (string.IsNullOrWhiteSpace(code))
@@ -227,6 +241,24 @@ namespace Ps1Run.Core.Localization
             }
 
             return code!.Trim().ToLowerInvariant();
+        }
+
+        /// <summary>旧 JSON 语言包已废弃：不读取、不转换，只提示用户手动替换。</summary>
+        private static void WarnLegacyJson(string languageDirectory)
+        {
+            try
+            {
+                foreach (var file in Directory.GetFiles(languageDirectory, "*.json"))
+                {
+                    DiagnosticsLog.Warn("已忽略旧格式语言包（请改用 " + Extension + "）：" + file);
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
         }
     }
 }

@@ -20,6 +20,7 @@ namespace Ps1Run.Core.Tests
                 new KeyValuePair<string, Action>("日志写入与保留", DiagnosticsLogTests.RunAll),
                 new KeyValuePair<string, Action>("程序配置", ConfigStoreTests.RunAll),
                 new KeyValuePair<string, Action>("多语言资源", LocalizationTests.RunAll),
+                new KeyValuePair<string, Action>("脚本规则", ScriptRuleTests.RunAll),
             };
 
             int failed = 0;

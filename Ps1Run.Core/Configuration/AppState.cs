@@ -3,14 +3,14 @@ using Ps1Run.Core.Settings;
 namespace Ps1Run.Core.Configuration
 {
     /// <summary>
-    /// 合并后 config.json 的完整内容：程序配置（日志天数 / 主题 / 语言）+
-    /// 行为设置（运行方式 / 解释器 / 编辑器）+ schema 版本号。
-    /// 版本号用于识别旧文件（缺失 = 旧版或手工创建），并在读取时补写与迁移。
+    /// 合并后 config.lang 的完整内容：程序配置（日志天数 / 主题 / 语言）+
+    /// 行为设置（运行方式 / 解释器 / 编辑器 / 规则判断标准）+ schema 版本号。
+    /// 配置与语言包统一为 .lang 文本格式，版本号升到 2；旧 .json 不再读取。
     /// </summary>
     public sealed record AppState
     {
-        /// <summary>当前 config.json schema 版本。字段含义变化时递增。</summary>
-        public const int CurrentVersion = 1;
+        /// <summary>当前 config.lang schema 版本。字段含义变化时递增。</summary>
+        public const int CurrentVersion = 2;
 
         /// <summary>文件中的版本号；0 表示缺失（旧文件）。</summary>
         public int Version { get; init; }

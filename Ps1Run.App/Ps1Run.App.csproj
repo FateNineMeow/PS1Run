@@ -31,11 +31,11 @@
 
   <ItemGroup>
     <!--
-      随程序发布中英文语言包（均带 __version 版本号）：
-      运行时若发现 lang\zh-cn.json 缺版本号或版本较旧，会按内置文案重建（应用新版）；
-      其他语言包只读取、不覆盖，版本不符时界面给出提示。
+      随程序发布中英文语言包（均为 .lang 纯文本，首行 Version: 2,）：
+      运行时若发现 lang\zh-cn.lang 缺版本号或版本较旧，会按内置文案重建（应用新版）；
+      其他语言包只读取、不覆盖，版本不符时界面给出提示。旧 *.json 语言包不再发布或读取。
     -->
-    <None Update="lang\en-us.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="lang\zh-cn.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="lang\en-us.lang" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="lang\zh-cn.lang" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -11,8 +11,8 @@ namespace Ps1Run.Core.Configuration
     }
 
     /// <summary>
-    /// config.json 的模型：日志保留天数、主题、界面语言。
-    /// 与 settings.json（运行方式 / 解释器 / 编辑器）分开，前者是「程序配置」，后者是「行为偏好」。
+    /// config.lang 中的程序配置部分：日志保留天数、主题、界面语言。
+    /// 与 AppSettings（运行方式 / 解释器 / 编辑器 / 规则标准）同文件但由不同门面保存，互不覆盖。
     /// </summary>
     public sealed record AppConfig
     {

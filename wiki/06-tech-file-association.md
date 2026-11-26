@@ -195,7 +195,7 @@ SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
 | 8 | 发 `SHChangeNotify` | `ShellNotify.RaiseAssocChanged()` |
 | 9 | 回读校验并返回结构化状态 | `AssociationService.GetStatus()` |
 
-**保护机制（设计，未实现）**：写之前记录"原有值快照"（`.ps1` 原默认值、OpenWithProgids 原有值列表）到 `%APPDATA%\Ps1Run\association-backup.json`，供注销时精确回滚；当前代码未写备份文件，见 [04 D16](04-progress.md#3-差距清单需求-vs-现状)。
+**保护机制（设计，未实现）**：写之前记录"原有值快照"（`.ps1` 原默认值、OpenWithProgids 原有值列表）到 `%APPDATA%\Ps1Run\association-backup.lang（预留）`，供注销时精确回滚；当前代码未写备份文件，见 [04 D16](04-progress.md#3-差距清单需求-vs-现状)。
 
 ---
 

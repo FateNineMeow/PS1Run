@@ -21,6 +21,7 @@ namespace Ps1Run.App.ViewModels
         private readonly PowerShellPreview? _powerShell;
         private readonly string _configWarningText;
         private bool _rememberChoice;
+        private bool _rememberForScript;
 
         public PickerViewModel(PickRequest request)
         {
@@ -118,6 +119,7 @@ namespace Ps1Run.App.ViewModels
 
         public string PackWarningText => HasPackWarning ? L("Picker.PackWarning") : string.Empty;
 
+        /// <summary>全局记住：修改 RunMode，以后所有脚本都不再询问。</summary>
         public bool RememberChoice
         {
             get => _rememberChoice;
@@ -130,13 +132,43 @@ namespace Ps1Run.App.ViewModels
 
                 _rememberChoice = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RememberChoice)));
+                if (value && _rememberForScript)
+                {
+                    _rememberForScript = false;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RememberForScript)));
+                }
+            }
+        }
+
+        /// <summary>仅此脚本：按当前判断标准写入 rule.txt。</summary>
+        public bool RememberForScript
+        {
+            get => _rememberForScript;
+            set
+            {
+                if (_rememberForScript == value)
+                {
+                    return;
+                }
+
+                _rememberForScript = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RememberForScript)));
+                if (value && _rememberChoice)
+                {
+                    _rememberChoice = false;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RememberChoice)));
+                }
             }
         }
 
         public PickResult ToResult(LaunchAction action)
         {
             // 取消不记住任何偏好（wiki 05 §6）
-            return new PickResult(action, action != LaunchAction.Cancel && RememberChoice);
+            var confirmed = action != LaunchAction.Cancel;
+            return new PickResult(
+                action,
+                confirmed && RememberChoice,
+                confirmed && RememberForScript);
         }
 
         /// <summary>

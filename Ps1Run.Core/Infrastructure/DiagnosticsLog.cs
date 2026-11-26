@@ -18,7 +18,7 @@ namespace Ps1Run.Core.Infrastructure
     /// <summary>
     /// 轻量日志（wiki 02 F6.1）。
     /// 位置：&lt;软件根目录&gt;\log\yyyyMMdd.log，按天滚动；
-    /// 保留天数由 config.json 的 LogDays 决定（默认 7 天），每天首次运行时自动清理。
+    /// 保留天数由 config.lang 的 LogDays 决定（默认 7 天），每天首次运行时自动清理。
     /// 每条日志带级别、会话 ID 与进程 ID，便于区分多次双击/多进程启动。
     /// 日志失败一律吞掉，绝不影响主流程。
     /// </summary>

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -15,13 +17,14 @@ using Ps1Run.Core.Editors;
 using Ps1Run.Core.Infrastructure;
 using Ps1Run.Core.Localization;
 using Ps1Run.Core.PowerShell;
+using Ps1Run.Core.Rules;
 using Ps1Run.Core.Settings;
 
 namespace Ps1Run.App.ViewModels
 {
     /// <summary>
     /// 主界面视图模型（wiki 02 F2.7 / F5.4 / F7.x）。
-    /// 设置只有一份：软件根目录 config.json（程序配置 + 运行设置 + 版本号）。
+    /// 设置只有一份：软件根目录 config.lang（程序配置 + 运行设置 + 版本号）。
     /// </summary>
     public sealed class MainViewModel : INotifyPropertyChanged
     {
@@ -44,6 +47,11 @@ namespace Ps1Run.App.ViewModels
         private string? _detectionText;
         private AssociationStatus? _associationStatus;
         private bool _suppressAutoSave;
+        private readonly ObservableCollection<ScriptRule> _rules = new ObservableCollection<ScriptRule>();
+        private ScriptRule? _selectedRule;
+        private string _ruleSearchText = string.Empty;
+        private string _ruleStatusText = string.Empty;
+        private readonly string _ruleFilePath;
 
         public MainViewModel(SettingsStore store, AppSettings settings, ConfigStore configStore, AppConfig config)
         {
@@ -52,8 +60,10 @@ namespace Ps1Run.App.ViewModels
             _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
             _config = AppConfig.Normalize(config);
             _associations = new AssociationService();
+            _ruleFilePath = AppPaths.RuleFile;
+            RefreshRules(silent: true);
 
-            // 语言列表来自 lang 目录的 *.json（启动时已确保 zh-cn.json 存在）
+            // 语言列表来自 lang 目录的 *.lang（启动时已确保 zh-cn.lang 存在）
             _languages = LocalizationManager.Instance.AvailableLanguages();
 
             _suppressAutoSave = true;
@@ -252,6 +262,111 @@ namespace Ps1Run.App.ViewModels
             }
         }
 
+        /// <summary>脚本规则判断标准：文件路径始终匹配，以下三项来自 config.lang。</summary>
+        public bool RuleMatchSize
+        {
+            get => _settings.RuleMatchSize;
+            set
+            {
+                if (_settings.RuleMatchSize == value)
+                {
+                    return;
+                }
+
+                SetRuleCriteria(value, nameof(RuleMatchSize), s => s with { RuleMatchSize = value });
+            }
+        }
+
+        public bool RuleMatchModifiedTime
+        {
+            get => _settings.RuleMatchModifiedTime;
+            set
+            {
+                if (_settings.RuleMatchModifiedTime == value)
+                {
+                    return;
+                }
+
+                SetRuleCriteria(value, nameof(RuleMatchModifiedTime), s => s with { RuleMatchModifiedTime = value });
+            }
+        }
+
+        public bool RuleMatchHash
+        {
+            get => _settings.RuleMatchHash;
+            set
+            {
+                if (_settings.RuleMatchHash == value)
+                {
+                    return;
+                }
+
+                SetRuleCriteria(value, nameof(RuleMatchHash), s => s with { RuleMatchHash = value });
+            }
+        }
+
+        public AppSettings CurrentSettings => _settings;
+
+        /// <summary>按路径关键字过滤后的规则列表。</summary>
+        public IEnumerable<ScriptRule> FilteredRules
+        {
+            get
+            {
+                var keyword = _ruleSearchText.Trim();
+                if (keyword.Length == 0)
+                {
+                    return _rules;
+                }
+
+                return _rules.Where(r => r.Path.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+        }
+
+        public ScriptRule? SelectedRule
+        {
+            get => _selectedRule;
+            set
+            {
+                if (_selectedRule == value)
+                {
+                    return;
+                }
+
+                _selectedRule = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string RuleSearchText
+        {
+            get => _ruleSearchText;
+            set
+            {
+                var text = value ?? string.Empty;
+                if (_ruleSearchText == text)
+                {
+                    return;
+                }
+
+                _ruleSearchText = text;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(FilteredRules));
+            }
+        }
+
+        /// <summary>规则列表底部的条数 / 操作提示。</summary>
+        public string RuleStatusText => string.IsNullOrEmpty(_ruleStatusText)
+            ? string.Format(CultureInfo.CurrentCulture, L("Rule.Count"), _rules.Count.ToString(CultureInfo.InvariantCulture))
+            : _ruleStatusText;
+
+        public string RuleFilePath => _ruleFilePath;
+
+        /// <summary>当前内存中的全部规则（含未保存修改）。</summary>
+        public IReadOnlyList<ScriptRule> AllRules => _rules.ToList();
+
+        /// <summary>规则列表是否有尚未写入 rule.txt 的增删改。</summary>
+        public bool HasUnsavedRules { get; private set; }
+
         public string StatusText
         {
             get => _statusText;
@@ -349,6 +464,186 @@ namespace Ps1Run.App.ViewModels
             _associationStatus is not null
             && _associationStatus.UserChoice.HasOverride
             && !_associationStatus.UserChoice.PointsToUs;
+
+        /// <summary>判断标准变化：立即写 config.lang，并按新标准重写全部规则指纹。</summary>
+        private void SetRuleCriteria(bool value, string propertyName, Func<AppSettings, AppSettings> update)
+        {
+            _settings = update(_settings);
+            AutoSave();
+            OnPropertyChanged(propertyName);
+
+            var refreshed = _rules.Select(r => ScriptRuleFingerprint.Refresh(r, _settings)).ToList();
+            _rules.Clear();
+            foreach (var rule in refreshed)
+            {
+                _rules.Add(rule);
+            }
+
+            try
+            {
+                ScriptRuleStore.Save(_ruleFilePath, _rules);
+                _ruleStatusText = L("Rule.CriteriaSaved");
+                StatusText = _ruleStatusText;
+            }
+            catch (IOException ex)
+            {
+                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
+                StatusText = _ruleStatusText;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
+                StatusText = _ruleStatusText;
+            }
+
+            HasUnsavedRules = false;
+            OnPropertyChanged(nameof(HasUnsavedRules));
+            OnPropertyChanged(nameof(FilteredRules));
+            OnPropertyChanged(nameof(RuleStatusText));
+        }
+
+        /// <summary>从 rule.txt 重新载入规则（丢弃当前未保存的增删改）。</summary>
+        public void RefreshRules(bool silent = false)
+        {
+            try
+            {
+                var loaded = ScriptRuleStore.Load(_ruleFilePath);
+                _rules.Clear();
+                foreach (var rule in loaded)
+                {
+                    _rules.Add(rule);
+                }
+
+                _ruleStatusText = string.Empty;
+                if (!silent)
+                {
+                    StatusText = L("Rule.Refreshed") + _ruleFilePath;
+                }
+            }
+            catch (IOException ex)
+            {
+                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
+                StatusText = _ruleStatusText;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
+                StatusText = _ruleStatusText;
+            }
+
+            SelectedRule = null;
+            HasUnsavedRules = false;
+            OnPropertyChanged(nameof(HasUnsavedRules));
+            OnPropertyChanged(nameof(FilteredRules));
+            OnPropertyChanged(nameof(RuleStatusText));
+        }
+
+        /// <summary>新增或覆盖一条规则（尚未写盘，点保存才落盘）。</summary>
+        public void AddRule(ScriptRule rule)
+        {
+            if (rule is null)
+            {
+                return;
+            }
+
+            var existing = _rules.FirstOrDefault(r =>
+                string.Equals(r.Path, rule.Path, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+            {
+                _rules.Remove(existing);
+            }
+
+            _rules.Add(rule);
+            SelectedRule = rule;
+            _ruleStatusText = string.Empty;
+            HasUnsavedRules = true;
+            OnPropertyChanged(nameof(HasUnsavedRules));
+            OnPropertyChanged(nameof(FilteredRules));
+            OnPropertyChanged(nameof(RuleStatusText));
+        }
+
+        /// <summary>编辑已有规则：路径可能被改动，按原路径定位替换。</summary>
+        public void UpdateRule(ScriptRule original, ScriptRule updated)
+        {
+            if (original is null || updated is null)
+            {
+                return;
+            }
+
+            var index = -1;
+            for (var i = 0; i < _rules.Count; i++)
+            {
+                if (ReferenceEquals(_rules[i], original)
+                    || string.Equals(_rules[i].Path, original.Path, StringComparison.OrdinalIgnoreCase))
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            if (index >= 0)
+            {
+                _rules[index] = updated;
+            }
+            else
+            {
+                _rules.Add(updated);
+            }
+
+            SelectedRule = updated;
+            _ruleStatusText = string.Empty;
+            HasUnsavedRules = true;
+            OnPropertyChanged(nameof(HasUnsavedRules));
+            OnPropertyChanged(nameof(FilteredRules));
+            OnPropertyChanged(nameof(RuleStatusText));
+        }
+
+        public void DeleteRule(ScriptRule? rule)
+        {
+            if (rule is null)
+            {
+                return;
+            }
+
+            if (_rules.Remove(rule))
+            {
+                SelectedRule = null;
+                _ruleStatusText = L("Rule.Deleted") + rule.Path;
+                StatusText = _ruleStatusText;
+                HasUnsavedRules = true;
+                OnPropertyChanged(nameof(HasUnsavedRules));
+                OnPropertyChanged(nameof(FilteredRules));
+                OnPropertyChanged(nameof(RuleStatusText));
+            }
+        }
+
+        /// <summary>把当前规则列表整体写入 rule.txt。</summary>
+        public void SaveRules()
+        {
+            try
+            {
+                ScriptRuleStore.Save(_ruleFilePath, _rules);
+                _ruleStatusText = L("Rule.Saved") + _ruleFilePath;
+                StatusText = _ruleStatusText;
+                DiagnosticsLog.Info("规则已保存：" + _ruleFilePath + "（" + _rules.Count + " 条）");
+                HasUnsavedRules = false;
+                OnPropertyChanged(nameof(HasUnsavedRules));
+            }
+            catch (IOException ex)
+            {
+                DiagnosticsLog.Error("保存规则失败：" + ex.Message, ex);
+                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
+                StatusText = _ruleStatusText;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                DiagnosticsLog.Error("保存规则失败：" + ex.Message, ex);
+                _ruleStatusText = L("Rule.SaveFailed") + ex.Message;
+                StatusText = _ruleStatusText;
+            }
+
+            OnPropertyChanged(nameof(RuleStatusText));
+        }
 
         public void Save()
         {
@@ -666,7 +961,7 @@ namespace Ps1Run.App.ViewModels
             }
         }
 
-        /// <summary>用默认程序打开 config.json，方便直接改 LogDays / Theme / Language。</summary>
+        /// <summary>用默认程序打开 config.lang，方便直接改 LogDays / Theme / Language。</summary>
         public void OpenConfigFile()
         {
             try
@@ -711,19 +1006,19 @@ namespace Ps1Run.App.ViewModels
             {
                 _configStore.Save(_config);
                 DiagnosticsLog.Info(
-                    "config.json 已保存：file=" + _configStore.FilePath
+                    "config.lang 已保存：file=" + _configStore.FilePath
                     + " logDays=" + _config.LogDays.ToString(CultureInfo.InvariantCulture)
                     + " theme=" + _config.Theme
                     + " language=" + _config.Language);
             }
             catch (IOException ex)
             {
-                DiagnosticsLog.Error("保存 config.json 失败：" + ex.Message, ex);
+                DiagnosticsLog.Error("保存 config.lang 失败：" + ex.Message, ex);
                 StatusText = L("Main.SaveFailed") + ex.Message;
             }
             catch (UnauthorizedAccessException ex)
             {
-                DiagnosticsLog.Error("保存 config.json 失败：" + ex.Message, ex);
+                DiagnosticsLog.Error("保存 config.lang 失败：" + ex.Message, ex);
                 StatusText = L("Main.SaveFailed") + ex.Message;
             }
         }
@@ -807,7 +1102,7 @@ namespace Ps1Run.App.ViewModels
         }
 
         /// <summary>
-        /// 按内置中文重建 zh-cn.json（等同于应用随程序发布的新版语言包）；
+        /// 按内置中文重建 zh-cn.lang（等同于应用随程序发布的新版语言包）；
         /// 其他语言包不会被覆盖，仍需用户自行更新。
         /// </summary>
         public void RebuildLanguagePack()

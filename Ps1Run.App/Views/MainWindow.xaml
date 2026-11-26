@@ -11,6 +11,19 @@
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 
+        <!-- 规则列表：DataGrid 列头 / 行跟随深浅色主题，避免深色下列头仍是白底浅字 -->
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="{DynamicResource App.InfoCardBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource App.ForegroundPrimary}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource App.SurfaceBorder}" />
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="Padding" Value="8,5" />
+        </Style>
+        <Style TargetType="DataGridRow">
+            <Setter Property="Background" Value="{DynamicResource App.SurfaceBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource App.ForegroundPrimary}" />
+        </Style>
+
         <!-- 语言项：显式模板，保证折叠态与下拉项都显示语言名而不是 ToString() -->
         <DataTemplate x:Key="LanguageItemTemplate">
             <TextBlock Text="{Binding DisplayName}" />
@@ -231,6 +244,95 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- ============ 脚本规则 ============ -->
+            <TabItem Header="{loc:T Tab.Rules}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,0,6,0">
+
+                        <GroupBox Header="{loc:T Group.RuleCriteria}" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="{loc:T Hint.RulePathAlways}" Margin="0,0,0,8"
+                                           Foreground="{DynamicResource App.ForegroundSecondary}" TextWrapping="Wrap" />
+                                <CheckBox Content="{loc:T Label.RuleSize}" Margin="0,0,0,6"
+                                          IsChecked="{Binding RuleMatchSize, Mode=TwoWay}" />
+                                <CheckBox Content="{loc:T Label.RuleModifiedTime}" Margin="0,0,0,6"
+                                          IsChecked="{Binding RuleMatchModifiedTime, Mode=TwoWay}" />
+                                <CheckBox Content="{loc:T Label.RuleHash}"
+                                          IsChecked="{Binding RuleMatchHash, Mode=TwoWay}" />
+                                <TextBlock Text="{loc:T Hint.RuleHash}" Margin="0,6,0,0"
+                                           FontSize="11" Foreground="{DynamicResource App.ForegroundMuted}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="{loc:T Group.RuleList}" Padding="12">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="190" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:T Label.RuleSearch}"
+                                           VerticalAlignment="Center" Margin="0,0,8,8" />
+                                <TextBox Grid.Row="0" Grid.Column="1" Margin="0,0,0,8"
+                                         VerticalContentAlignment="Center"
+                                         Text="{Binding RuleSearchText, UpdateSourceTrigger=PropertyChanged}" />
+
+                                <DataGrid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                          ItemsSource="{Binding FilteredRules}"
+                                          SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
+                                          AutoGenerateColumns="False" IsReadOnly="True"
+                                          SelectionMode="Single" CanUserAddRows="False"
+                                          MouseDoubleClick="OnRuleRowDoubleClick"
+                                          Background="{DynamicResource App.SurfaceBackground}"
+                                          Foreground="{DynamicResource App.ForegroundPrimary}"
+                                          BorderBrush="{DynamicResource App.SurfaceBorder}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="{loc:T Column.RulePath}"
+                                                            Binding="{Binding Path}" Width="*" MinWidth="220" />
+                                        <DataGridTextColumn Header="{loc:T Column.RuleAction}"
+                                                            Binding="{Binding ActionToken}" Width="60" />
+                                        <DataGridTextColumn Header="{loc:T Column.RuleSize}"
+                                                            Binding="{Binding SizeText}" Width="90" />
+                                        <DataGridTextColumn Header="{loc:T Column.RuleModifiedTime}"
+                                                            Binding="{Binding ModifiedTimeUtc}" Width="190" />
+                                        <DataGridTextColumn Header="{loc:T Column.RuleHash}"
+                                                            Binding="{Binding HashText}" Width="190" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <WrapPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                           Orientation="Horizontal" Margin="0,10,0,4">
+                                    <Button Content="{loc:T Button.RuleRefresh}" Padding="14,6" Margin="0,4,8,4"
+                                            Click="OnRuleRefreshClick" />
+                                    <Button Content="{loc:T Button.RuleAdd}" Padding="14,6" Margin="0,4,8,4"
+                                            Click="OnRuleAddClick" />
+                                    <Button Content="{loc:T Button.RuleEdit}" Padding="14,6" Margin="0,4,8,4"
+                                            Click="OnRuleEditClick" />
+                                    <Button Content="{loc:T Button.RuleDelete}" Padding="14,6" Margin="0,4,8,4"
+                                            Click="OnRuleDeleteClick" />
+                                    <Button Content="{loc:T Button.RuleSave}" Padding="14,6" Margin="0,4,8,4"
+                                            Click="OnRuleSaveClick" />
+                                </WrapPanel>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                                           Text="{Binding RuleStatusText}" Margin="0,4,0,0"
+                                           FontSize="12" TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding RuleStatusText}"
+                                           Foreground="{DynamicResource App.ForegroundMuted}" />
+                            </Grid>
+                        </GroupBox>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- ============ 文件关联 ============ -->
             <TabItem Header="{loc:T Tab.Association}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -342,7 +444,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="0,0,6,0">
 
-                        <!-- 语言包版本提醒：语言文件缺版本号时显示，附一键重建 zh-cn.json -->
+                        <!-- 语言包版本提醒：语言文件缺版本号时显示，附一键重建 zh-cn.lang -->
                         <Border Padding="12" CornerRadius="6" Margin="0,0,0,12"
                                 Background="{DynamicResource App.InfoCardBackground}"
                                 BorderBrush="{DynamicResource App.WarningForeground}" BorderThickness="1"
@@ -437,7 +539,7 @@
                             </Grid>
                         </GroupBox>
 
-                        <!-- 配置文件与版本：settings.json 已并入 config.json，只剩一份 -->
+                        <!-- 配置文件与版本：配置统一为 config.lang 一份；旧 JSON 文件已废弃 -->
                         <GroupBox Header="{loc:T Group.SettingsFiles}" Padding="12">
                             <Grid>
                                 <Grid.ColumnDefinitions>

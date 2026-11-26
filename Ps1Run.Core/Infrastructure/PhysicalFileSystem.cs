@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 
 namespace Ps1Run.Core.Infrastructure
@@ -28,5 +29,9 @@ namespace Ps1Run.Core.Infrastructure
         }
 
         public Stream OpenRead(string path) => File.OpenRead(path);
+
+        public long GetFileLength(string path) => new FileInfo(path).Length;
+
+        public DateTime GetLastWriteTimeUtc(string path) => new FileInfo(path).LastWriteTimeUtc;
     }
 }

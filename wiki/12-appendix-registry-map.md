@@ -82,7 +82,7 @@ HKCU\Software\Classes\.ps1
 
 ### 4.3 备份文件（设计，未实现）
 
-设计位置 `%APPDATA%\Ps1Run\association-backup.json`，拟记录注册前的以下内容；**当前代码不生成该文件**（见 [04 D16](04-progress.md#3-差距清单需求-vs-现状)）：
+设计位置 `%APPDATA%\Ps1Run\association-backup.lang（预留）`，拟记录注册前的以下内容；**当前代码不生成该文件**（见 [04 D16](04-progress.md#3-差距清单需求-vs-现状)）：
 
 ```json
 {

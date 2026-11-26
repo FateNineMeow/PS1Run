@@ -8,7 +8,7 @@ namespace Ps1Run.Core.Localization
 {
     /// <summary>
     /// 内置中文文案（默认语言 zh-cn）。
-    /// 两个用途：① 首次运行生成 lang\zh-cn.json；② 任何语言文件缺键时的兜底，
+    /// 两个用途：① 首次运行生成 lang\zh-cn.lang；② 任何语言文件缺键时的兜底，
     /// 避免界面出现空白或键名。
     /// </summary>
     public static class DefaultStrings
@@ -19,10 +19,10 @@ namespace Ps1Run.Core.Localization
         /// 语言包版本号。语言包结构或键集合有较大变化时递增；
         /// 语言文件缺少该版本号（或低于当前值）说明是旧语言包，界面会提示更新。
         /// </summary>
-        public const int PackVersion = 1;
+        public const int PackVersion = 2;
 
         /// <summary>语言包中记录版本号的保留键（不是界面文案，加载时会被剔除）。</summary>
-        public const string PackVersionKey = "__version";
+        public const string PackVersionKey = "Version";
 
         /// <summary>语言代码 → 下拉框显示名（语言自称，不随界面语言变化）。</summary>
         private static readonly Dictionary<string, string> DisplayNames =
@@ -48,29 +48,20 @@ namespace Ps1Run.Core.Localization
         }
 
         /// <summary>
-        /// 把默认文案序列化成 lang\zh-cn.json 的内容（首行为版本号，键按字母序，便于人工比对）。
+        /// 把默认文案序列化成 lang\zh-cn.lang 的内容（首行为版本号，键按字母序，便于人工比对）。
         /// </summary>
-        public static string ToJson()
+        public static string ToLang()
         {
             var builder = new StringBuilder();
-            builder.AppendLine("{");
-            builder.Append("  ")
-                .Append(SimpleJson.Quote(PackVersionKey))
-                .Append(": ")
-                .Append(PackVersion)
-                .AppendLine(",");
+            builder.Append(KeyValueTextParser.FormatLine(
+                PackVersionKey, PackVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-            var entries = ZhCn.OrderBy(pair => pair.Key, StringComparer.Ordinal).ToList();
-            for (var i = 0; i < entries.Count; i++)
+            var entries = ZhCn.OrderBy(pair => pair.Key, StringComparer.Ordinal);
+            foreach (var entry in entries)
             {
-                builder.Append("  ")
-                    .Append(SimpleJson.Quote(entries[i].Key))
-                    .Append(": ")
-                    .Append(SimpleJson.Quote(entries[i].Value));
-                builder.AppendLine(i == entries.Count - 1 ? string.Empty : ",");
+                builder.Append(KeyValueTextParser.FormatLine(entry.Key, KeyValueTextParser.Quote(entry.Value)));
             }
 
-            builder.AppendLine("}");
             return builder.ToString();
         }
 
@@ -82,6 +73,7 @@ namespace Ps1Run.Core.Localization
                 ["Tab.General"] = "常规",
                 ["Tab.Association"] = "文件关联",
                 ["Tab.LogsAndAppearance"] = "日志与外观",
+                ["Tab.Rules"] = "脚本规则",
                 ["Badge.Registered"] = "已注册",
                 ["Badge.Partial"] = "部分注册",
                 ["Badge.NotRegistered"] = "未注册",
@@ -92,6 +84,8 @@ namespace Ps1Run.Core.Localization
                 ["Group.RunMode"] = "运行方式（双击行为）",
                 ["Group.Executor"] = "执行程序与编辑器",
                 ["Group.Detect"] = "自动探测（一键识别）",
+                ["Group.RuleCriteria"] = "脚本规则判断标准",
+                ["Group.RuleList"] = "规则列表",
                 ["Group.Appearance"] = "外观与语言",
                 ["Group.Logs"] = "日志",
                 ["Group.SettingsFiles"] = "配置文件与版本",
@@ -138,9 +132,9 @@ namespace Ps1Run.Core.Localization
 
                 // 主界面：版本提醒（语言文件缺少版本号）
                 ["Warning.Title"] = "语言包版本提醒",
-                ["Warning.LanguagePackOutdated"] = "语言包 {0} 缺少版本号或低于当前版本（v{1}），部分文字会回退为中文。可重新生成 zh-cn.json；其他语言包需自行更新，程序不会自动覆盖。",
+                ["Warning.LanguagePackOutdated"] = "语言包 {0} 缺少版本号或低于当前版本（v{1}），部分文字会回退为中文。可重新生成 zh-cn.lang；其他语言包需自行更新，程序不会自动覆盖。",
                 ["Warning.NoVersion"] = "无",
-                ["Button.RebuildLanguagePack"] = "重新生成 zh-cn.json",
+                ["Button.RebuildLanguagePack"] = "重新生成 zh-cn.lang",
                 ["Hint.Version"] = "版本号用于判断配置文件与语言包是否与当前程序匹配。",
 
                 // 主界面：操作按钮
@@ -154,6 +148,48 @@ namespace Ps1Run.Core.Localization
                 ["Button.OpenLogFolder"] = "打开日志目录",
                 ["Button.OpenCurrentLog"] = "查看当日日志",
                 ["Button.CopyRecentLogs"] = "复制最近日志",
+                ["Button.RuleRefresh"] = "刷新",
+                ["Button.RuleAdd"] = "新增",
+                ["Button.RuleEdit"] = "编辑规则",
+                ["Button.RuleDelete"] = "删除",
+                ["Button.RuleSave"] = "保存规则",
+                ["Button.SelectScript"] = "选择文件…",
+                ["Button.RuleOk"] = "确定",
+                ["Button.RuleCancel"] = "取消",
+
+                // 脚本规则页
+                ["Label.RuleSize"] = "文件大小",
+                ["Label.RuleModifiedTime"] = "修改时间",
+                ["Label.RuleHash"] = "文件 HASH",
+                ["Label.RuleSearch"] = "按路径筛选：",
+                ["Label.RulePathInput"] = "脚本路径（可直接输入，也可选择文件）",
+                ["Label.RuleAction"] = "处理方式",
+                ["Hint.RulePathAlways"] = "文件路径默认参与匹配，不可取消。",
+                ["Hint.RuleHash"] = "可能减缓脚本启动速度：需读取整个脚本计算 SHA-256。",
+                ["Column.RulePath"] = "文件路径",
+                ["Column.RuleAction"] = "动作",
+                ["Column.RuleSize"] = "大小（字节）",
+                ["Column.RuleModifiedTime"] = "修改时间（UTC）",
+                ["Column.RuleHash"] = "文件 HASH",
+                ["Rule.Action.Run"] = "执行",
+                ["Rule.Action.Edit"] = "编辑",
+                ["Rule.Empty"] = "暂无规则。可在选择窗勾选「仅此脚本」，或点「新增」手动创建。",
+                ["Rule.Count"] = "共 {0} 条规则",
+                ["Rule.Saved"] = "规则已保存到 ",
+                ["Rule.SaveFailed"] = "保存规则失败：",
+                ["Rule.Deleted"] = "已删除规则：",
+                ["Rule.Refreshed"] = "已重新载入规则：",
+                ["Rule.RefreshConfirm"] = "当前有未保存的规则修改，刷新将丢弃这些修改。继续？",
+                ["Rule.CriteriaSaved"] = "判断标准已更新，规则指纹已同步重写。",
+                ["Rule.EditorTitle.Add"] = "新增脚本规则",
+                ["Rule.EditorTitle.Edit"] = "编辑脚本规则",
+                ["Rule.InvalidExtension"] = "仅支持 .ps1 文件",
+                ["Rule.FileMissing"] = "文件不存在，无法生成指纹",
+                ["Rule.PathExists"] = "该路径已存在规则，保存后将覆盖原规则。",
+                ["Rule.DeleteConfirm"] = "确认删除这条规则？",
+                ["Rule.FingerprintPreview"] = "指纹预览：大小 {0} 字节 · 修改时间 {1} · HASH {2}",
+                ["Rule.CriteriaSummary"] = "当前判断标准：文件路径（必选）{0}{1}{2}",
+                ["Rule.Filter.Exe"] = "PowerShell 脚本 (*.ps1)|*.ps1|所有文件 (*.*)|*.*",
 
                 // 主界面：视图模型提示
                 ["Main.Detection.Idle"] = "尚未探测。点击左侧按钮按探测链识别 PS5 / PS7 / 编辑程序；已配置且文件存在的程序保持不变。",
@@ -201,6 +237,8 @@ namespace Ps1Run.Core.Localization
                 // 选择窗
                 ["Picker.Title"] = "选择处理方式",
                 ["Picker.Remember"] = "以后都这样处理（不再询问）",
+                ["Picker.RememberScript"] = "以后都这样处理（仅此脚本）",
+                ["Picker.RememberScriptTip"] = "按当前判断标准记录到 rule.txt；文件变化后可能不再命中。",
                 ["Picker.Cancel"] = "取消 (Esc)",
                 ["Picker.Edit"] = "编辑 (E)",
                 ["Picker.Run"] = "执行 (Enter)",

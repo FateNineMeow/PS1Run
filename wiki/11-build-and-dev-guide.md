@@ -64,13 +64,13 @@ dotnet build Ps1Run.slnx -c Debug
 dotnet build Ps1Run.App -c Debug -f net48
 dotnet build Ps1Run.App -c Debug -f net11.0-windows
 
-# 单元测试（零依赖控制台测试工程，7/7 组通过）
+# 单元测试（零依赖控制台测试工程，8/8 组通过）
 dotnet run --project Ps1Run.Core.Tests -f net11.0-windows
 ```
 
-**运行日志**：`<软件根目录>\log\yyyyMMdd.log`（按天滚动；保留天数取 `config.json` 的 `LogDays`，默认 7 天，每天首次运行清理一次；带级别/会话 ID/进程 ID）。主界面"打开日志目录"可直接定位，"复制最近日志"可复制当日最后 150 行用于反馈；启动失败、分发结果、关联操作与全局异常均写日志。详见 [02 F6](02-feature-matrix.md#f6-日志与诊断)。
+**运行日志**：`<软件根目录>\log\yyyyMMdd.log`（按天滚动；保留天数取 `config.lang` 的 `LogDays`，默认 7 天，每天首次运行清理一次；带级别/会话 ID/进程 ID）。主界面"打开日志目录"可直接定位，"复制最近日志"可复制当日最后 150 行用于反馈；启动失败、分发结果、关联操作与全局异常均写日志。详见 [02 F6](02-feature-matrix.md#f6-日志与诊断)。
 
-**配置文件与语言包**：`<软件根目录>\config.json`（首次运行生成）与 `<软件根目录>\lang\*.json`（默认生成 `zh-cn.json`，随程序附带 `en-us.json`）。若根目录不可写（例如装在 `Program Files` 且未提权），三者会一起退化到 `%APPDATA%\Ps1Run`，日志里会有一条 WARN。详见 [02 F7](02-feature-matrix.md#f7-配置--主题--多语言)。
+**配置文件与语言包**：`<软件根目录>\config.lang`（首次运行生成）与 `<软件根目录>\lang\*.lang`（默认生成 `zh-cn.lang`，随程序附带 `en-us.lang`）。若根目录不可写（例如装在 `Program Files` 且未提权），三者会一起退化到 `%APPDATA%\Ps1Run`，日志里会有一条 WARN。详见 [02 F7](02-feature-matrix.md#f7-配置--主题--多语言)。
 
 ### 3.1 脚本入口（推荐）
 
@@ -84,7 +84,7 @@ dotnet run --project Ps1Run.Core.Tests -f net11.0-windows
 | `scripts\run.ps1` | 启动已构建产物 | `-Framework Net11`、`-Build`、`-Intent Run`、`-ScriptPath`、`-Arguments` |
 
 ```powershell
-.\scripts\build-all.ps1 -Test                                  # 全量构建 + 7/7 组单测
+.\scripts\build-all.ps1 -Test                                  # 全量构建 + 8/8 组单测
 .\scripts\build-net48.ps1                                      # 只生成 net48
 .\scripts\build-net11.ps1 -Configuration Release               # 只生成 net11 / Release
 .\scripts\run.ps1                                              # 打开主界面（net48）
@@ -149,7 +149,7 @@ dotnet run -f net11.0-windows            # 期望：GBK936=FAIL NotSupportedExce
 
 ## 6. 功能验证清单
 
-按里程碑顺序逐项手工验证（对应 [04 里程碑](04-progress.md#2-里程碑)）。**截至 2026-11-24 核心逻辑已通过 7/7 组自动化测试与双目标构建，但下列系统级交互项仍待人工执行。**
+按里程碑顺序逐项手工验证（对应 [04 里程碑](04-progress.md#2-里程碑)）。**截至 2026-11-24 核心逻辑已通过 8/8 组自动化测试与双目标构建，但下列系统级交互项仍待人工执行。**
 
 ### 6.1 探测能力（M2）
 
@@ -201,7 +201,7 @@ dotnet run -f net11.0-windows            # 期望：GBK936=FAIL NotSupportedExce
 | net11 单文件发布后启动崩溃 | 误开了 `PublishTrimmed` | 关闭裁剪 |
 | 启动时报"在 `System.Windows.Baml2006.TypeConverterMarkupExtension` 上提供时引发了异常"（第 4 行） | 窗口 XAML 曾用相对路径 `Icon="icon.ico"`，WPF 解析成 `views/icon.ico` 找不到资源 | **已修复**为绝对 pack URI `pack://application:,,,/icon.ico`，并确认 `.csproj` 用 `<Resource Include="icon.ico" />` 嵌入；重建时勿改回相对路径 |
 | 想查分发/注册失败原因 | 启动、分发、关联操作与异常均按会话写日志 | 看 `<软件根目录>\log\yyyyMMdd.log`，或在主界面点"复制最近日志" |
-| 界面语言/主题不生效 | `config.json` 的值非法或语言包缺失 | 检查 `config.json`（`Theme` 取 Auto/Light/Dark，`Language` 对应 `lang\<code>.json`），日志里有"已应用语言/主题"记录 |
+| 界面语言/主题不生效 | `config.lang` 的值非法或语言包缺失 | 检查 `config.lang`（`Theme` 取 Auto/Light/Dark，`Language` 对应 `lang\<code>.lang`），日志里有"已应用语言/主题"记录 |
 | 双击脚本中文路径执行失败 | 命令拼接未加引号 | 检查 `"%1"` 与 `ArgumentList`/转义 |
 | `dotnet build` 在仓库根找不到项目 | 缺 slnx，或当前目录不是仓库根 | 在仓库根执行 `dotnet build Ps1Run.slnx` |
 
@@ -232,7 +232,7 @@ reg delete "HKCU\Software\Classes\.ps1" /ve /f     # 谨慎：仅在确认该值
 # 或在资源管理器地址栏执行后重启 explorer：taskkill /f /im explorer.exe & start explorer
 ```
 
-> 开发期反复注册/注销时，`UserChoice` 不会自动清理；当前代码也不会删它。上面的第三条命令（`reg delete ... .ps1 /ve`）对应设计中的"完整回滚"，但**当前注册流程并不写 `.ps1` 默认值**，`association-backup.json` 与"高级：移除当前选择"也**均未实现**（见 [04 D16/D17](04-progress.md#3-差距清单需求-vs-现状)）——仅在确认该值确为本程序写入时才执行删除。
+> 开发期反复注册/注销时，`UserChoice` 不会自动清理；当前代码也不会删它。上面的第三条命令（`reg delete ... .ps1 /ve`）对应设计中的"完整回滚"，但**当前注册流程并不写 `.ps1` 默认值**，`association-backup.lang（预留）` 与"高级：移除当前选择"也**均未实现**（见 [04 D16/D17](04-progress.md#3-差距清单需求-vs-现状)）——仅在确认该值确为本程序写入时才执行删除。
 
 ---
 

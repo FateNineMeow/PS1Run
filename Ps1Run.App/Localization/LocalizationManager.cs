@@ -11,7 +11,7 @@ namespace Ps1Run.App.Localization
 {
     /// <summary>
     /// 运行时文案容器（wiki 02 F7.x）。
-    /// 语言包来自 &lt;软件根目录&gt;\lang\&lt;code&gt;.json；缺键回退内置中文，再回退键名，
+    /// 语言包来自 &lt;软件根目录&gt;\lang\&lt;code&gt;.lang；缺键回退内置中文，再回退键名，
     /// 保证任何情况下界面都不会空白。切换语言时刷新所有 <see cref="Translation"/>，
     /// 已绑定到界面的文字会立即更新，无需重启。
     /// </summary>
@@ -95,7 +95,7 @@ namespace Ps1Run.App.Localization
         }
 
         public string LanguageFilePath(string code) =>
-            Path.Combine(AppPaths.LanguageDirectory, LanguageCatalog.Normalize(code) + ".json");
+            LanguageCatalog.GetFilePath(AppPaths.LanguageDirectory, code);
 
         /// <summary>加载并应用语言包；文件缺失或损坏时回退内置中文（不阻断启动）。</summary>
         public void Load(string? code)

@@ -3,6 +3,7 @@ using System.IO;
 using Ps1Run.Core.Editors;
 using Ps1Run.Core.Infrastructure;
 using Ps1Run.Core.PowerShell;
+using Ps1Run.Core.Rules;
 using Ps1Run.Core.Settings;
 
 namespace Ps1Run.Core.Dispatch
@@ -34,18 +35,24 @@ namespace Ps1Run.Core.Dispatch
         Cancel = 2,
     }
 
-    /// <summary>选择窗返回结果。Remember=true 表示用户勾选了"以后都这样处理"。</summary>
+    /// <summary>
+    /// 选择窗返回结果。Remember=true 表示"以后都这样处理（不再询问）"（全局 RunMode），
+    /// RememberForScript=true 表示"仅此脚本"（写入 rule.txt）。两者互斥。
+    /// </summary>
     public sealed class PickResult
     {
-        public PickResult(LaunchAction action, bool remember)
+        public PickResult(LaunchAction action, bool remember, bool rememberForScript = false)
         {
             Action = action;
             Remember = remember;
+            RememberForScript = rememberForScript;
         }
 
         public LaunchAction Action { get; }
 
         public bool Remember { get; }
+
+        public bool RememberForScript { get; }
 
         public static PickResult Cancel { get; } = new PickResult(LaunchAction.Cancel, false);
     }
@@ -184,7 +191,9 @@ namespace Ps1Run.Core.Dispatch
         private readonly PowerShellLocator _powerShellLocator;
         private readonly EditorLocator _editorLocator;
         private readonly Action<LaunchAction>? _onRemember;
+        private readonly Action<string, LaunchAction>? _onRememberScript;
         private readonly Action<PowerShellEdition, string>? _onPowerShellSelected;
+        private readonly ScriptRuleMatcher? _ruleMatcher;
 
         public LaunchDispatcher(
             AppSettings settings,
@@ -192,7 +201,9 @@ namespace Ps1Run.Core.Dispatch
             IFileSystem? fileSystem = null,
             Action<LaunchAction>? onRemember = null,
             IExecutablePicker? executablePicker = null,
-            Action<PowerShellEdition, string>? onPowerShellSelected = null)
+            Action<PowerShellEdition, string>? onPowerShellSelected = null,
+            ScriptRuleMatcher? ruleMatcher = null,
+            Action<string, LaunchAction>? onRememberScript = null)
         {
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
             _picker = picker;
@@ -203,6 +214,8 @@ namespace Ps1Run.Core.Dispatch
             _editorLocator = new EditorLocator(_fileSystem);
             _onRemember = onRemember;
             _onPowerShellSelected = onPowerShellSelected;
+            _ruleMatcher = ruleMatcher;
+            _onRememberScript = onRememberScript;
         }
 
         public DispatchDecision Decide(CommandLineOptions options)
@@ -253,15 +266,29 @@ namespace Ps1Run.Core.Dispatch
                     return new DispatchDecision(LaunchAction.Edit, scriptPath, ExitCodes.Success, "显式 --edit");
             }
 
-            // --ask 强制弹窗；--open 按设置
-            var mode = options.Intent == LaunchIntent.Ask ? RunMode.Ask : _settings.RunMode;
-            switch (mode)
+            // --ask 强制弹窗，明确不跳过规则；其余按全局设置
+            if (options.Intent == LaunchIntent.Ask)
+            {
+                return AskUser(scriptPath!);
+            }
+
+            switch (_settings.RunMode)
             {
                 case RunMode.Run:
                     return new DispatchDecision(LaunchAction.Run, scriptPath, ExitCodes.Success, "运行方式=执行");
                 case RunMode.Edit:
                     return new DispatchDecision(LaunchAction.Edit, scriptPath, ExitCodes.Success, "运行方式=编辑");
                 default:
+                    // Ask 模式：先查 rule.txt，命中直接分发，未命中才弹窗
+                    if (_ruleMatcher is not null
+                        && _ruleMatcher.TryMatch(scriptPath!, _settings, out var rule, out var matchedBy)
+                        && rule is not null)
+                    {
+                        var ruleReason = "命中脚本规则（" + (matchedBy ?? "文件路径") + "）：" + rule.Path;
+                        DiagnosticsLog.Info(ruleReason + " → " + rule.Action);
+                        return new DispatchDecision(rule.Action, scriptPath, ExitCodes.Success, ruleReason);
+                    }
+
                     return AskUser(scriptPath!);
             }
         }
@@ -296,9 +323,16 @@ namespace Ps1Run.Core.Dispatch
             var reason = result.Action == LaunchAction.Run ? "用户选择执行" : "用户选择编辑";
             if (result.Remember)
             {
-                // "以后都这样处理"：交给宿主写设置（wiki 05 §5）
+                // "以后都这样处理（不再询问）"：交给宿主改全局 RunMode（wiki 05 §5）
                 _onRemember?.Invoke(result.Action);
                 reason += "（记住选择）";
+            }
+
+            if (result.RememberForScript)
+            {
+                // "仅此脚本"：交给宿主按当前判断标准写 rule.txt
+                _onRememberScript?.Invoke(scriptPath, result.Action);
+                reason += "（记住此脚本）";
             }
 
             return new DispatchDecision(result.Action, scriptPath, ExitCodes.Success, reason);

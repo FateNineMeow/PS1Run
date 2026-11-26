@@ -1,6 +1,10 @@
+using System;
 using System.Windows;
+using System.Windows.Input;
+using Ps1Run.App.Localization;
 using Ps1Run.App.ViewModels;
 using Ps1Run.Core.PowerShell;
+using Ps1Run.Core.Rules;
 
 namespace Ps1Run.App.Views
 {
@@ -79,6 +83,91 @@ namespace Ps1Run.App.Views
             ViewModel?.OpenConfigFile();
 
         private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
+        private void OnRuleRefreshClick(object sender, RoutedEventArgs e)
+        {
+            var vm = ViewModel;
+            if (vm is null)
+            {
+                return;
+            }
+
+            if (vm.HasUnsavedRules
+                && MessageBox.Show(this, LocalizationManager.Loc("Rule.RefreshConfirm"),
+                    LocalizationManager.Loc("App.Title"),
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            vm.RefreshRules();
+        }
+
+        private void OnRuleAddClick(object sender, RoutedEventArgs e)
+        {
+            if (ShowRuleEditor(null, out var rule))
+            {
+                ViewModel?.AddRule(rule!);
+            }
+        }
+
+        private void OnRuleEditClick(object sender, RoutedEventArgs e)
+        {
+            var selected = ViewModel?.SelectedRule;
+            if (selected is null)
+            {
+                return;
+            }
+
+            if (ShowRuleEditor(selected, out var updated))
+            {
+                ViewModel?.UpdateRule(selected, updated!);
+            }
+        }
+
+        private void OnRuleRowDoubleClick(object sender, MouseButtonEventArgs e) => OnRuleEditClick(sender, e);
+
+        private void OnRuleDeleteClick(object sender, RoutedEventArgs e)
+        {
+            var selected = ViewModel?.SelectedRule;
+            if (selected is null)
+            {
+                return;
+            }
+
+            if (MessageBox.Show(this,
+                    LocalizationManager.Loc("Rule.DeleteConfirm") + Environment.NewLine + selected.Path,
+                    LocalizationManager.Loc("App.Title"),
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                ViewModel?.DeleteRule(selected);
+            }
+        }
+
+        private void OnRuleSaveClick(object sender, RoutedEventArgs e) => ViewModel?.SaveRules();
+
+        private bool ShowRuleEditor(ScriptRule? editing, out ScriptRule? result)
+        {
+            result = null;
+            var vm = ViewModel;
+            if (vm is null)
+            {
+                return false;
+            }
+
+            var window = new RuleEditorWindow(vm.CurrentSettings, vm.AllRules, editing)
+            {
+                Owner = this,
+            };
+
+            if (window.ShowDialog() == true && window.Rule is not null)
+            {
+                result = window.Rule;
+                return true;
+            }
+
+            return false;
+        }
 
         private static void CopyToClipboard(string? text)
         {

@@ -7,7 +7,7 @@ namespace Ps1Run.App.Localization
     /// <summary>
     /// 设计期文本：<c>d:Text="保存设置"</c>。
     /// 仅在 XAML 设计器里把文字显示出来，运行时完全跳过——运行时文案一律来自
-    /// lang\*.json（通过 <see cref="TExtension"/>），两者内容保持一致。
+    /// lang\*.lang（通过 <see cref="TExtension"/>），两者内容保持一致。
     /// </summary>
     public static class DesignText
     {

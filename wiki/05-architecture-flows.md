@@ -1,6 +1,6 @@
 # 05 架构与关键流程
 
-> 状态横幅：本页描述的架构**主体已落地为代码**。截至 2026-11-24，参数解析、无窗口直通、选择窗（含 Topmost）、探测与分发链路、解释器缺失人工指定、SHOpenWithDialog / HKLM 提升、分级日志、config.json / 主题 / 多语言均已实现；双目标构建与 7/7 组单测通过，系统级实机验收待人工执行。状态真源见 [02](02-feature-matrix.md) / [04](04-progress.md)；本页标注"设计"的条目（如注册互斥量）未落地。
+> 状态横幅：本页描述的架构**主体已落地为代码**。截至 2026-11-24，参数解析、无窗口直通、选择窗（含 Topmost）、探测与分发链路、解释器缺失人工指定、SHOpenWithDialog / HKLM 提升、分级日志、config.lang / 主题 / 多语言均已实现；双目标构建与 8/8 组单测通过，系统级实机验收待人工执行。状态真源见 [02](02-feature-matrix.md) / [04](04-progress.md)；本页标注"设计"的条目（如注册互斥量）未落地。
 
 ---
 
@@ -88,12 +88,12 @@ OnStartup(argv)
  │
  ├─ CoreBootstrap.Initialize()（net11 代码页提供程序）
  │
- ├─ ConfigStore.Load()：<软件根目录>\config.json（首次生成 LogDays/Theme/Language）
+ ├─ ConfigStore.Load()：<软件根目录>\config.lang（首次生成 LogDays/Theme/Language）
  │
  ├─ DiagnosticsLog.BeginSession(args, LogDays)
  │    └─ 当天第一次运行 → 清理超过 LogDays 的旧日志
  │
- ├─ LocalizationManager.Load(config.Language)：加载 lang\<code>.json（缺失则生成 zh-cn.json）
+ ├─ LocalizationManager.Load(config.Language)：加载 lang\<code>.lang（缺失则生成 zh-cn.lang）
  ├─ ThemeManager.Apply(config.Theme)：Auto 读系统 AppsUseLightTheme，替换 Light/Dark 主题字典
  │
  ├─ 解析 CommandLineOptions
@@ -107,9 +107,12 @@ OnStartup(argv)
  │    └─ 不存在 → 提示"文件已被移动或删除" → Exit(3)
  │
  ├─ DecideAction()
- │    ├─ 显式 --run  → Run（跳过 Ask）
- │    ├─ 显式 --edit → Edit（跳过 Ask）
- │    ├─ --ask       → 弹 PickerWindow
+│    ├─ 显式 --run  → Run（跳过 Ask 与规则）
+│    ├─ 显式 --edit → Edit（跳过 Ask 与规则）
+│    ├─ --ask       → 强制弹 PickerWindow（不查规则）
+│    └─ 全局 Ask    → 先查 rule.txt：路径必匹配 + 启用的大小/时间/HASH 短路
+│                     ├─ 命中 → 按规则动作直接分发 + 记日志
+│                     └─ 未命中 → 弹 PickerWindow（勾选「仅此脚本」则写入规则）
  │    └─ 无显式 / --open → 读 AppSettings.RunMode
  │                       ├─ Run   → Run
  │                       ├─ Edit  → Edit
@@ -200,7 +203,7 @@ ResolvePowerShell() → PS7 策略但探测全失败
   → 标题栏常驻关联徽标（未注册 / 部分注册 / 已注册），任何页签都能看到
   → 「常规」页签：运行方式、执行程序（PS5/PS7 策略与路径 + 编辑器路径同组）、一键识别（已配置且文件存在的程序不被覆盖）
   → 「文件关联」页签：关联状态卡片（三动词、扩展声明、程序路径、UserChoice）+ 注册/注销、系统"打开方式"、默认应用设置、机器级注册/注销
-  → 「日志与外观」页签：语言包缺版本号时的红字提醒 + 「重新生成 zh-cn.json」、日志保留天数与清理、日志目录/当日日志/复制最近日志、外观与语言（主题 / 语言包）、配置文件路径与程序版本
+  → 「日志与外观」页签：语言包缺版本号时的红字提醒 + 「重新生成 zh-cn.lang」、日志保留天数与清理、日志目录/当日日志/复制最近日志、外观与语言（主题 / 语言包）、配置文件路径与程序版本
   → 底部状态条：一行"更改即时生效"提示 + 关闭
 ```
 

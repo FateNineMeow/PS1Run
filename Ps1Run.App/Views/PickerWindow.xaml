@@ -65,6 +65,9 @@
                        Visibility="{Binding HasPackWarning, Converter={StaticResource BoolToVisibility}}" />
             <CheckBox Content="{loc:T Picker.Remember}" d:DesignText.Text="以后都这样处理（不再询问）"
                       IsChecked="{Binding RememberChoice, Mode=TwoWay}" />
+            <CheckBox Content="{loc:T Picker.RememberScript}" d:DesignText.Text="以后都这样处理（仅此脚本）"
+                      Margin="0,6,0,0" IsChecked="{Binding RememberForScript, Mode=TwoWay}"
+                      ToolTip="{loc:T Picker.RememberScriptTip}" />
         </StackPanel>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">

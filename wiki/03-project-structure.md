@@ -1,6 +1,6 @@
 # 03 项目结构
 
-> 状态横幅：本页描述的结构**主体已落地**。截至 2026-11-25，项目已迁至独立仓库（含 `.git`），仓库根已有 `Ps1Run.slnx`、三个工程（含 `Ps1Run.Core.Tests`）、57 个 C#/XAML 源文件及 `icon.ico`，双目标构建与 7/7 组单测通过。状态真源见 [02](02-feature-matrix.md) / [04](04-progress.md)。
+> 状态横幅：本页描述的结构**主体已落地**。截至 2026-11-25，项目已迁至独立仓库（含 `.git`），仓库根已有 `Ps1Run.slnx`、三个工程（含 `Ps1Run.Core.Tests`）、57 个 C#/XAML 源文件及 `icon.ico`，双目标构建与 8/8 组单测通过。状态真源见 [02](02-feature-matrix.md) / [04](04-progress.md)。
 
 ---
 
@@ -12,7 +12,7 @@
 ├─ Directory.Build.props                ✅ 已存在（双目标 + 输出路径）
 ├─ Ps1Run.Core\                         ✅ 已存在（Associations/Dispatch/PowerShell/Editors/Settings/Infrastructure）
 ├─ Ps1Run.App\                          ✅ 已存在（App/Views/ViewModels/Services/Resources/icon.ico/app.manifest）
-├─ Ps1Run.Core.Tests\                   ✅ 已存在（7/7 组自动化测试通过）
+├─ Ps1Run.Core.Tests\                   ✅ 已存在（8/8 组自动化测试通过）
 ├─ scripts\                             ✅ 已存在（运行脚本 + 三个构建入口）
 ├─ Build\net48\Ps1Run.exe               ✅ 构建产物（内嵌 icon.ico）
 ├─ Build\net11.0-windows\Ps1Run.dll     ✅ 构建产物（内嵌 icon.ico）
@@ -90,10 +90,15 @@
 │  │  └─ RegistryAppPathReader.cs       #   App Paths / Uninstall 读取
 │  ├─ Configuration\
 │  │  ├─ AppConfig.cs                   #   程序配置模型（日志天数 / 主题 / 语言）
-│  │  ├─ AppState.cs                    #   合并后 config.json 的完整内容（Version + 两者）
-│  │  ├─ ConfigDocument.cs              #   单文件读改写：原子写入 / 损坏备份 / 旧 settings.json 合并
+│  │  ├─ AppState.cs                    #   合并后 config.lang 的完整内容（Version + 两者）
+│  │  ├─ ConfigDocument.cs              #   config.lang 读改写：原子写入 / 损坏备份 / 无 JSON 迁移
 │  │  ├─ ConfigStore.cs                 #   程序配置读写门面
-│  │  └─ AppPaths.cs                    #   根目录 / config.json / lang / log 约定
+│  │  └─ AppPaths.cs                    #   根目录 / config.lang / rule.txt / lang / log 约定
+│  ├─ Rules\
+│  │  ├─ ScriptRule.cs                  #   5 列规则模型
+│  │  ├─ ScriptRuleStore.cs             #   rule.txt 读写 / upsert / 删除 / 并发保护
+│  │  ├─ ScriptRuleFingerprint.cs       #   指纹计算与 .ps1 路径校验
+│  │  └─ ScriptRuleMatcher.cs           #   路径必匹配 + 大小/时间/HASH 短路
 │  ├─ Settings\
 │  │  ├─ AppSettings.cs                 #   设置模型
 │  │  └─ SettingsStore.cs               #   运行设置读写门面（与 ConfigStore 同一文件）
@@ -103,17 +108,18 @@
 │     ├─ DiagnosticsLog.cs              #   分级日志（会话 ID / 保留 7 天 / ReadRecent）
 │     ├─ IFileSystem.cs                 #   文件系统抽象（便于测试注入）
 │     ├─ PhysicalFileSystem.cs          #   IFileSystem 的磁盘实现
+│     ├─ KeyValueTextParser.cs          #   配置 / 语言包共用的纯文本键值解析器
 │     ├─ PathSearch.cs                  #   PATH 环境变量查找
 │     └─ ProcessLauncher.cs             #   启动目标进程（记录 PID 与 Win32 错误码）
 │
-├─ Ps1Run.Core.Tests\                   # 零依赖控制台单测（7/7 组通过，仅 net11 目标）
+├─ Ps1Run.Core.Tests\                   # 零依赖控制台单测（8/8 组通过，仅 net11 目标）
 │  ├─ Ps1Run.Core.Tests.csproj
 │  ├─ Program.cs                        #   测试入口与断言辅助
 │  ├─ FakeFileSystem.cs                 #   内存文件系统（探测链测试用）
 │  ├─ ScriptEncodingDetectorTests.cs    #   编码判型 6 类输入
 │  ├─ CommandLineOptionsTests.cs        #   参数优先级与冲突
 │  ├─ PowerShellLocatorTests.cs         #   PS5/PS7 探测回退
-│  ├─ SettingsStoreTests.cs             #   JSON 往返 / 与 config.json 同文件 / 损坏恢复
+│  ├─ SettingsStoreTests.cs             #   键值文本往返 / 与 config.lang 同文件 / 损坏恢复
 │  └─ DiagnosticsLogTests.cs            #   日志写入 / 读取 / 保留策略
 │
 └─ wiki\                                # 本文档（13 页，位于工程根）
@@ -201,7 +207,7 @@
 | 目标框架 | 产物 | 运行前提 | 建议分发形态 |
 |---|---|---|---|
 | `net48` | `Build\net48\Ps1Run.exe`（约几 MB） | Win10 1903+/Win11 **内置** .NET Framework 4.8 | **主发布目标**，单文件直发 |
-| `net11.0-windows` | `Build\net11.0-windows\Ps1Run.dll` + 启动器 + `runtimeconfig.json` | 用户需安装 .NET 11 Desktop Runtime | 可选产物；或改成自包含单文件（体积显著增大） |
+| `net11.0-windows` | `Build\net11.0-windows\Ps1Run.dll` + 启动器 + `runtimeconfig.lang` | 用户需安装 .NET 11 Desktop Runtime | 可选产物；或改成自包含单文件（体积显著增大） |
 
 两者可并存于同一安装目录的子文件夹中，互不干扰。关联命令只需指向其中一个。
 
@@ -221,7 +227,7 @@
 
 ## 8. 新增文件清单（与功能清单对应）
 
-截至 2026-11-24 已有 **57 个 C#/XAML 源文件 + 3 个工程文件 + 1 个解决方案文件 + `Directory.Build.props` + `icon.ico`**，约 7094 行。`Ps1Run.Core.Tests` 已建立并通过 7/7 组测试。文件系统交互通过 `IFileSystem` 抽象注入（`ScriptEncodingDetector` / `PowerShellLocator` / `EditorLocator` 均可替换）；注册表读取是直接调用 `Microsoft.Win32.Registry`（无接口抽象），交互型注册表用例保留给人工验收。运行期产物（`config.json`、`lang\`、`log\`）落在 exe 所在目录，不在仓库内。
+截至 2026-11-24 已有 **57 个 C#/XAML 源文件 + 3 个工程文件 + 1 个解决方案文件 + `Directory.Build.props` + `icon.ico`**，约 7094 行。`Ps1Run.Core.Tests` 已建立并通过 8/8 组测试。文件系统交互通过 `IFileSystem` 抽象注入（`ScriptEncodingDetector` / `PowerShellLocator` / `EditorLocator` 均可替换）；注册表读取是直接调用 `Microsoft.Win32.Registry`（无接口抽象），交互型注册表用例保留给人工验收。运行期产物（`config.lang`、`lang\`、`log\`）落在 exe 所在目录，不在仓库内。
 
 ---
 

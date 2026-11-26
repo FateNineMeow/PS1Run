@@ -37,27 +37,33 @@ PS1Run takes that behaviour back:
 
 Everything is launched on demand. There is **no background resident process**; the app dispatches and exits.
 
+> **Note:** Directory Opus cannot invoke PS1Run on double-click by default. It ships its own file-type double-click rules, which intercept the action before the Windows default association (`ShellExecute`) is consulted.
+
 ## Screenshots
 
-**Main window (light · Simplified Chinese)** — three tabs: General (run mode, executor & editor: PS5.1 / PS7+ / editor path, one-click detection), File association (status card and registration actions), and Logs & appearance (logs, appearance & language, config file & version); the association badge stays in the title bar, and the Logs & appearance tab shows a red “!” badge when the language pack has no version number.
+**Main window · General (light · Simplified Chinese)** — the first of three tabs: run mode, executor & editor (PS5.1 / PS7+ / editor path), and one-click detection. The association badge stays in the title bar.
 
-![PS1Run main window: light theme, Simplified Chinese, showing run mode, interpreter (PS5.1 / PS7+ with editor path) and one-click detection; appearance & language live on the diagnostics tab](wiki/img-1.png)
+![PS1Run General tab: light theme, Simplified Chinese, run mode set to Ask, executor & editor group with PS5.1, PS7+ and a VS Code path, plus the one-click detection button](wiki/home-1.png)
 
-> The screenshot above shows the 0.1.0 single-page layout; since 0.2.0 the build uses the three tabs described here, so the image is pending an update.
+**Main window · File association (light · English)** — association status card and registration actions. Per-user registration needs no elevation; machine-wide registration goes through UAC.
 
-**Main window (dark · English)** — the same layout with the dark theme and the English language pack.
+![PS1Run File association tab: light theme, English UI, showing registered status, the open/run/edit verbs, and buttons to register, unregister, open 'Open with', and open default apps settings](wiki/home-2.png)
 
-![PS1Run main window: dark theme, English UI, with the same groups and fields as the Chinese version](wiki/img-2.png)
+**Main window · Logs & appearance (dark · English)** — log retention, appearance & language, and config file & version. The language pack version appears as `v2 · en-us.lang`.
 
-**Picker (light · Chinese)** — a UTF-8-with-BOM script is routed to PS7; interpreter, executable, and rationale are visible before anything runs.
+![PS1Run Logs & appearance tab: dark theme, English UI, with log retention days, theme and language dropdowns, config file path, app version, and language pack version](wiki/home-3.png)
 
-![PS1Run picker: Chinese light theme, UTF-8 with BOM script showing the PS7 badge, pwsh.exe, and the auto-detection rationale](wiki/img-3.png)
+The association badge in the title bar is visible on all three tabs. When the Chinese language pack has no version number, the Logs & appearance tab also shows a red “!” badge and red notices appear both in the tab and in the picker window.
+
+**Picker (light · Simplified Chinese)** — a UTF-8-with-BOM script is routed to PS7; interpreter, executable, and rationale are visible before anything runs.
+
+![PS1Run picker: light theme, Simplified Chinese, FilesMove.ps1 showing the PS7 badge, pwsh.exe, the auto-detection rationale UTF-8 with BOM, and Cancel/Edit/Run buttons](wiki/picker-1.png)
 
 **Picker (dark · English)** — an ANSI/GBK script is routed to PS5; the badge card and accent button stay legible on dark.
 
-![PS1Run picker: English dark theme, ANSI/GBK script showing the PS5 badge and the powershell.exe rationale](wiki/img-4.png)
+![PS1Run picker: dark theme, English UI, WPFPublish.ps1 showing the PS5 badge, powershell.exe, the auto-detection rationale ANSI/GBK, and Cancel/Edit/Run buttons](wiki/picker-2.png)
 
-> The source screenshots live in the [`wiki/`](wiki) folder (`img-1.png` … `img-4.png`).
+> The source screenshots live in the [`wiki/`](wiki) folder: `home-1.png` … `home-3.png` and `picker-1.png` … `picker-2.png`.
 
 ## Features
 
@@ -106,12 +112,26 @@ Five-level fallback: user-defined → common install paths (VS Code / Notepad++ 
 
 - The main window is the single place to manage run mode, interpreter policy, editor, file association, theme, language, and logs.
 - Themes: **Auto / Light / Dark**. Auto reads the system `AppsUseLightTheme` value and switches instantly.
-- Localization: strings live in `lang\<code>.json`. Simplified Chinese and English ship with the app; any additional file dropped into `lang\` is discovered by the dropdown, and switching updates already-visible text immediately — no restart.
+- Localization: strings live in `lang\<code>.lang`. Simplified Chinese and English ship with the app; any additional file dropped into `lang\` is discovered by the dropdown, and switching updates already-visible text immediately — no restart.
 - The picker shows the script name, full path, the **PS5/PS7 badge with its rationale**, and an amber warning when a fallback or a missing executable is involved. It also shows a red notice when a configured executor/editor path no longer exists (or no editor can be discovered), and opens centred on screen without an initial flash.
+
+### Script rules (this script only)
+
+The picker has a second checkbox, "Always do this for this script only". When checked, the script is saved to `rule.txt` using the current criteria; the next double-click in Ask mode dispatches directly without showing the picker. It is mutually exclusive with "Always do this (don't ask again)", and `--ask` always shows the picker regardless of rules.
+
+- The file path is **always matched** and cannot be disabled.
+- Optional criteria on the Script Rules tab: `File size` (on), `Modified time` (on), `File hash` (off by default; reads the whole script to compute SHA-256 and may slow startup).
+- Matching short-circuits in the order path → size → modified time → hash; the hash is computed only when earlier checks pass.
+- Saving rules in the UI takes effect immediately; no restart is needed.
+
+**Script Rules tab (light · Simplified Chinese)** — criteria on top, rule list, and CRUD actions.
+
+![PS1Run Script Rules tab: light Chinese UI, file size and modified time enabled, hash disabled, with path filter, rule grid, and refresh/add/edit/delete/save buttons](wiki/rules.png)
 
 ### Configuration and logging
 
-- `config.json` is the single configuration file: program configuration (log retention days, theme, language) plus behaviour settings (run mode, interpreter policy, custom paths) and a schema `Version`. It is created on first run, written atomically, and backed up then rebuilt if corrupted. A legacy `%APPDATA%\Ps1Run\settings.json` is merged in once at startup and deleted after the merged config is written successfully (kept for a retry if writing fails).
+- `config.lang` is the single configuration file: program configuration (log retention, theme, language) plus behaviour settings (run mode, interpreter policy, custom paths, rule criteria) and a schema `Version`. It is created on first run, written atomically, and backed up then rebuilt if corrupted.
+- `rule.txt` stores "always for this script only" rules as five-column plain text, editable on the Script Rules tab.
 - Logs roll daily into `log\yyyyMMdd.log`, with levels plus session and process IDs. Retention is configurable, and expired files are pruned on the first run of each day.
 - The UI exposes "Open log folder", "View today's log", "Copy recent logs", and "Clean up now" for easy issue reporting.
 
@@ -166,7 +186,7 @@ You can also just double-click `Build\net48\Ps1Run.exe`.
 
 ### First-run checklist
 
-1. Open the main window and confirm that PS5 / PS7 were detected under "Interpreter" (use "Auto detect" to re-scan).
+1. Open the main window and check PS5 / PS7 and the editor path under "General → Executor & editor". Click "Detect PS5 / PS7 / editor" to fill only empty or invalid paths — configured paths that still exist on disk are left untouched.
 2. Click "Register" for per-user file association. Use "Register for all users" only if you want machine-wide behavior, and confirm the UAC prompt.
 3. Double-click any `.ps1` to verify the picker appears; it shows which interpreter will be used.
 4. To undo, click "Unregister", or change the default app back via "Open default apps settings".
@@ -204,61 +224,65 @@ The app is portable by default: everything lives in the application root, i.e. t
 
 | Path | Purpose |
 |---|---|
-| `config.json` | The only configuration file: program configuration (log retention, theme, language) + behaviour settings (run mode, interpreter policy, custom paths) + schema version |
-| `lang\zh-cn.json` | Simplified Chinese language pack (shipped; rebuilt at startup when its version is missing or older) |
-| `lang\en-us.json` | English language pack (shipped, never overwritten automatically) |
+| `config.lang` | The only configuration file: program configuration (log retention, theme, language) + behaviour settings (run mode, interpreter policy, custom paths) + schema version |
+| `lang\zh-cn.lang` | Simplified Chinese language pack (shipped; rebuilt at startup when its version is missing or older) |
+| `lang\en-us.lang` | English language pack (shipped, never overwritten automatically) |
+| `rule.txt` | Per-script rules: `path|action|size|modified|hash` |
 | `log\yyyyMMdd.log` | Daily rolling runtime log |
 
-> If the application root is not writable (typically installed under `Program Files` without elevation), `config.json`, `lang\`, and `log\` **all** fall back together to `%APPDATA%\Ps1Run\`, with a WARN entry in the log. Keeping them on one writable root avoids split-brain configuration.
+> **Breaking change**: legacy `config.json`, `%APPDATA%\Ps1Run\settings.json` and `lang\*.json` are no longer read, migrated, or deleted. Replace them manually using the formats below. Leftover files are harmless but ignored.
 
-### config.json
+> If the application root is not writable (typically installed under `Program Files` without elevation), `config.lang`, `rule.txt`, `lang\`, and `log\` **all** fall back together to `%APPDATA%\Ps1Run\`, with a WARN entry in the log.
 
-```json
-{
-  "Version": 1,
-  "RunMode": "Ask",
-  "PowerShellPolicy": "Auto",
-  "CustomPs5Path": "",
-  "CustomPs7Path": "",
-  "CustomEditorPath": "",
-  "LogDays": 7,
-  "Theme": "Auto",
-  "Language": "zh-cn"
-}
+### config.lang
+
+```text
+Version: 2,
+RunMode: "Ask",
+PowerShellPolicy: "Auto",
+CustomPs5Path: "",
+CustomPs7Path: "",
+CustomEditorPath: "",
+LogDays: 7,
+Theme: "Auto",
+Language: "zh-cn",
+RuleMatchSize: 1,
+RuleMatchModifiedTime: 1,
+RuleMatchHash: 0,
 ```
 
 | Field | Value | Notes |
 |---|---|---|
-| `Version` | currently `1` | Schema version; a missing value marks a legacy file which is upgraded and merged with the old `settings.json` on load |
+| `Version` | currently `2` | Config format version; shares the key/value text format with language packs. Legacy JSON configs are ignored |
 | `RunMode` | `Run` / `Edit` / `Ask` | Double-click behaviour; `Ask` prompts every time (default) |
 | `PowerShellPolicy` | `Ps5` / `Ps7` / `Auto` | Interpreter policy; `Auto` decides by script encoding |
 | `CustomPs5Path` / `CustomPs7Path` / `CustomEditorPath` | executable path, empty when unset | Empty values fall back to the discovery chain |
 | `LogDays` | 1–365, default `7` | Log retention in days; out-of-range values are normalized back to 7 |
 | `Theme` | `Auto` / `Light` / `Dark` | `Auto` follows the system theme |
-| `Language` | Language code, e.g. `zh-cn`, `en-us` | Maps to `lang\<code>.json` |
+| `Language` | Language code, e.g. `zh-cn`, `en-us` | Maps to `lang\<code>.lang` |
+| `RuleMatchSize` / `RuleMatchModifiedTime` / `RuleMatchHash` | `1` / `0` | Rule criteria; the file path is always matched, hash defaults to `0` |
 
 ### Custom language packs
 
-Create a file such as `lang\ja-jp.json` with key/value pairs, and the dropdown will pick it up automatically:
+Create a plain-text file such as `lang\ja-jp.lang` with key/value pairs, and the dropdown will pick it up automatically:
 
-```json
-{
-  "__version": 1,
-  "Button.Save": "Save settings",
-  "Button.Browse": "Browse…"
-}
+```text
+Version: 2,
+Button.Save: "Save settings",
+Button.Browse: "Browse…",
 ```
 
-- `__version` is the language-pack version (currently `1`) and is never treated as UI text. When it is missing or older than the expected version, the Logs & appearance tab shows a red “!” badge, a red notice appears inside the tab, and the picker window shows a red line explaining that some text may fall back to Chinese (the pack still loads, missing keys still fall back).
-- Fix it with “Regenerate zh-cn.json”, which rebuilds the Chinese pack from built-in strings. Other language packs are never overwritten automatically — add `__version` or update the text yourself.
+- `Version` is the language-pack version (currently `2`) and is never treated as UI text. When it is missing or older than the expected version, the Logs & appearance tab shows a red “!” badge, a red notice appears inside the tab, and the picker window shows a red line explaining that some text may fall back to Chinese (the pack still loads, missing keys still fall back).
+- Fix it with “Regenerate zh-cn.lang”, which rebuilds the Chinese pack from built-in strings. Other language packs are never overwritten automatically — add `Version` or update the text yourself.
 - Missing keys fall back in order: current language → built-in Chinese → the key name itself, so nothing renders blank.
-- The complete key set is available in `lang\zh-cn.json`. Translate only the keys you need; the rest fall back automatically.
+- The complete key set is available in `lang\zh-cn.lang`. Translate only the keys you need; the rest fall back automatically.
+- Each `rule.txt` line is `path|action|size|modified|hash`; action is `Run` or `Edit`, disabled criteria are written as `0`, modified time is UTC ISO 8601 and the hash is lowercase SHA-256.
 - UI text binds through `{loc:T Key}` and refreshes immediately when the language changes.
 - XAML also carries a design-time helper, `d:DesignText.Text="Save settings"`: it only supplies placeholder text inside the designer, is skipped entirely at runtime, and real text still comes from the language pack.
 
 ## Logging and Diagnostics
 
-- Location: `log\yyyyMMdd.log` (retention controlled by `LogDays` in `config.json`).
+- Location: `log\yyyyMMdd.log` (retention controlled by `LogDays` in `config.lang`).
 - Levels: `DEBUG` / `INFO` / `WARN` / `ERROR`. Each line carries `[s:sessionId]` and `[p:processId]`, which makes multiple double-click launches easy to tell apart.
 - What gets recorded: startup arguments and exe path, encoding detection result, chosen interpreter and probe source, target process PID, exit code; cancellations, argument errors, missing files, process launch failures (including Win32 error codes), corrupted settings/config, association registration and elevation, and unhandled exceptions.
 - Cleanup: expired logs are deleted on the **first** run of each day, with a "daily cleanup" entry written. Later launches on the same day skip it.
@@ -276,15 +300,16 @@ Ps1Run/
 │  ├─ Configuration/               #   AppPaths, AppConfig, ConfigStore
 │  ├─ Dispatch/                    #   argument parsing, dispatcher, picker contract, exit codes
 │  ├─ Editors/                     #   editor discovery and registry anchors
-│  ├─ Infrastructure/              #   logging, process launch, path search, P/Invoke, minimal JSON
-│  ├─ Localization/                #   built-in Chinese strings, language directory scanning
+│  ├─ Infrastructure/              #   logging, process launch, path search, key/value text parser
+│  ├─ Localization/                #   built-in Chinese strings, language directory scan
+│  ├─ Rules/                       #   rule.txt I/O, fingerprints, rule matching
 │  ├─ PowerShell/                  #   encoding detection, PS5/PS7 probing
 │  └─ Settings/                    #   preference model and persistence
 ├─ Ps1Run.App/                     # WPF shell: windows, bindings, themes, i18n
 │  ├─ Themes/                      #   Light.xaml / Dark.xaml
 │  ├─ Localization/                #   LocalizationManager, {loc:T}, design-time text
 │  ├─ Views/ ViewModels/ Services/ #   main window, picker, placement, theme manager
-│  └─ lang/en-us.json              #   English pack shipped with the app
+│  └─ lang/en-us.lang              #   English pack shipped with the app
 ├─ Ps1Run.Core.Tests/              # Dependency-free console test project (net11 single target)
 ├─ scripts/                        # Build and run scripts
 ├─ wiki/                           # Requirements, feature matrix, architecture, deep dives, progress
@@ -299,28 +324,29 @@ Design rule: all testable logic lives in `Ps1Run.Core`; `Ps1Run.App` only handle
 # Build
 dotnet build Ps1Run.slnx
 
-# Unit tests (7 groups)
+# Unit tests (8 groups)
 dotnet run --project Ps1Run.Core.Tests\Ps1Run.Core.Tests.csproj --no-build
 ```
 
-The seven test groups:
+The eight test groups:
 
 | Group | Coverage |
 |---|---|
 | Encoding detection | Six input shapes (BOM / no BOM / UTF-16 / ANSI / empty / invalid) |
 | Argument parsing | Verb precedence, conflicts, literal-path mode |
 | Interpreter probing | PS5/PS7 probe chains and fallback order |
-| Settings persistence | JSON round-trip, defaults on missing values, backup-and-rebuild on corruption |
+| Settings persistence | key/value text round-trip, defaults on missing values, backup-and-rebuild on corruption, legacy JSON ignored |
 | Log write and retention | Level/session format, reading recent lines, retention policy, daily cleanup |
-| Program configuration | `config.json` generation, range normalization, corruption recovery |
-| Localization resources | Language directory scan, default pack generation, missing-key fallback |
+| Program configuration | `config.lang` generation, range normalization, corruption recovery |
+| Localization resources | `.lang` directory scan, default pack generation, missing-key fallback, legacy JSON ignored |
+| Script rules | five-column I/O, CRUD, mandatory path match, size/time/hash short-circuit, path validation |
 
 Tests run against `net11.0-windows` only, to avoid doubling the matrix. The `net48` path is covered by the dual-target build plus manual startup verification.
 
 ## Known Limitations and Roadmap
 
 - **System-level acceptance is still manual**: registry changes, double-click dispatch, and multi-monitor picker placement need a real desktop session and are not automated.
-- **Uninstall rollback is incomplete**: unregistration clears the ProgId and `OpenWithProgids` entries it created, but does not restore the previous default value of `.ps1`, and there is no `association-backup.json` snapshot.
+- **Uninstall rollback is incomplete**: unregistration clears the ProgId and `OpenWithProgids` entries it created, but does not restore the previous default value of `.ps1`, and there is no `association-backup.lang` (reserved, not implemented) snapshot.
 - **Store edition of PS7 is not probed**: PowerShell 7 installed under `%ProgramFiles%\WindowsApps` is not yet part of the probe chain.
 - **No prompt when every editor fails**: the chain ends at Notepad instead of asking you to pick one (you can still browse for an editor manually in the main window).
 - **System theme changes are not watched live**: `Auto` is resolved at startup (or when you change the setting), so a mid-session theme change requires a restart or re-selecting the theme.

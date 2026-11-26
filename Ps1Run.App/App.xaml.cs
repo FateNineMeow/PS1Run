@@ -12,6 +12,7 @@ using Ps1Run.Core.Configuration;
 using Ps1Run.Core.Dispatch;
 using Ps1Run.Core.Infrastructure;
 using Ps1Run.Core.PowerShell;
+using Ps1Run.Core.Rules;
 using Ps1Run.Core.Settings;
 
 namespace Ps1Run.App
@@ -28,7 +29,7 @@ namespace Ps1Run.App
             CoreBootstrap.Initialize();
             base.OnStartup(e);
 
-            // 程序配置（config.json）：首次运行自动生成，含日志天数 / 主题 / 语言
+            // 程序配置（config.lang）：首次运行自动生成，含日志天数 / 主题 / 语言
             var configStore = new ConfigStore();
             var config = configStore.Load();
 
@@ -123,7 +124,9 @@ namespace Ps1Run.App
                     picker,
                     onRemember: action => RememberChoice(store, action),
                     executablePicker: executablePicker,
-                    onPowerShellSelected: (edition, path) => RememberPowerShell(store, edition, path));
+                    onPowerShellSelected: (edition, path) => RememberPowerShell(store, edition, path),
+                    ruleMatcher: new ScriptRuleMatcher(),
+                    onRememberScript: (path, action) => RememberScript(store, path, action));
 
                 var decision = dispatcher.Decide(options);
                 DiagnosticsLog.Info(
@@ -230,6 +233,29 @@ namespace Ps1Run.App
             catch (UnauthorizedAccessException ex)
             {
                 DiagnosticsLog.Error("保存设置失败：" + ex.Message);
+            }
+        }
+
+        /// <summary>"仅此脚本"：按当前判断标准计算指纹并写入 rule.txt；取消选择不会调用这里。</summary>
+        private static void RememberScript(SettingsStore store, string scriptPath, LaunchAction action)
+        {
+            try
+            {
+                var settings = store.Load();
+                var rule = ScriptRuleFingerprint.Create(scriptPath, action, settings);
+                ScriptRuleStore.Upsert(rule);
+                DiagnosticsLog.Info(
+                    "已记住此脚本规则：" + rule.Path + " → " + rule.Action
+                    + "（大小=" + rule.SizeText + " 修改时间=" + rule.ModifiedTimeUtc
+                    + " HASH=" + rule.HashText + "）");
+            }
+            catch (IOException ex)
+            {
+                DiagnosticsLog.Error("保存脚本规则失败：" + ex.Message);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                DiagnosticsLog.Error("保存脚本规则失败：" + ex.Message);
             }
         }
 

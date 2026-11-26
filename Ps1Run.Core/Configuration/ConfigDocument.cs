@@ -9,10 +9,11 @@ using Ps1Run.Core.Settings;
 namespace Ps1Run.Core.Configuration
 {
     /// <summary>
-    /// 单文件配置读写（软件根目录 config.json），供 <see cref="ConfigStore"/> 与
-    /// <see cref="SettingsStore"/> 共用：两者操作同一份文件的不同字段，
-    /// 写盘时先读回文件、只改自己负责的键，避免互相覆盖。
+    /// 单文件配置读写（软件根目录 config.lang，纯文本键值格式，与语言包同款），
+    /// 供 <see cref="ConfigStore"/> 与 <see cref="SettingsStore"/> 共用：
+    /// 两者操作同一份文件的不同字段，写盘时先读回文件、只改自己负责的键，避免互相覆盖。
     /// 缺失字段用默认值、损坏文件备份重建、临时文件 + 替换的原子写入。
+    /// 旧 config.json / settings.json 不再读取、不再迁移。
     /// </summary>
     public static class ConfigDocument
     {
@@ -25,8 +26,11 @@ namespace Ps1Run.Core.Configuration
         public const string LogDaysKey = "LogDays";
         public const string ThemeKey = "Theme";
         public const string LanguageKey = "Language";
+        public const string RuleMatchSizeKey = "RuleMatchSize";
+        public const string RuleMatchModifiedTimeKey = "RuleMatchModifiedTime";
+        public const string RuleMatchHashKey = "RuleMatchHash";
 
-        /// <summary>写盘顺序：版本号在最前，其后行为设置，最后程序配置。</summary>
+        /// <summary>写盘顺序：版本号在最前，其后为行为设置，最后程序配置与规则标准。</summary>
         private static readonly string[] CanonicalOrder =
         {
             VersionKey,
@@ -38,60 +42,34 @@ namespace Ps1Run.Core.Configuration
             LogDaysKey,
             ThemeKey,
             LanguageKey,
+            RuleMatchSizeKey,
+            RuleMatchModifiedTimeKey,
+            RuleMatchHashKey,
         };
 
         private static readonly UTF8Encoding Utf8NoBom = new UTF8Encoding(false);
 
-        /// <summary>旧版设置文件位置（%APPDATA%\Ps1Run\settings.json），仅用于一次性合并迁移。</summary>
-        public static string LegacySettingsFile => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Ps1Run",
-            "settings.json");
-
         /// <summary>
-        /// 读取完整配置。文件不存在时按默认值生成；发现缺少版本号（旧文件）时
-        /// 合并旧版 settings.json 并补写版本号。
+        /// 读取完整配置。文件不存在时按默认值生成；
+        /// 发现版本号不是当前值时补写为 2 并按默认值补齐新增字段。
         /// </summary>
-        public static AppState Load(
-            string filePath,
-            bool importLegacySettings,
-            string? legacySettingsFile = null)
+        public static AppState Load(string filePath)
         {
             if (string.IsNullOrEmpty(filePath))
             {
                 throw new ArgumentException("配置文件路径不能为空", nameof(filePath));
             }
 
-            var legacyFile = string.IsNullOrEmpty(legacySettingsFile)
-                ? LegacySettingsFile
-                : legacySettingsFile!;
-
             if (!File.Exists(filePath))
             {
-                var imported = importLegacySettings ? TryReadLegacySettings(legacyFile) : null;
-                var fresh = new AppState
-                {
-                    Version = AppState.CurrentVersion,
-                    Config = AppConfig.Default,
-                    Settings = imported ?? AppSettings.Default,
-                };
-
-                var saved = TrySave(filePath, fresh);
-                if (imported is not null)
-                {
-                    DiagnosticsLog.Info(
-                        "已合并旧设置文件：" + legacyFile + " → " + filePath
-                        + (saved && TryDeleteLegacySettings(legacyFile) ? "（原文件已删除）" : "（原文件保留：配置写入或删除失败）"));
-                }
-
+                var fresh = AppState.Default with { Version = AppState.CurrentVersion };
+                TrySave(filePath, fresh);
                 return fresh;
             }
 
             try
             {
-                var values = SimpleJson.ParseObject(File.ReadAllText(filePath, Encoding.UTF8));
-                var hasVersion = values.ContainsKey(VersionKey);
-
+                var values = KeyValueTextParser.Parse(File.ReadAllText(filePath, Encoding.UTF8));
                 var state = new AppState
                 {
                     Version = GetInt(values, VersionKey, 0),
@@ -108,33 +86,19 @@ namespace Ps1Run.Core.Configuration
                         CustomPs5Path = GetStringOrNull(values, CustomPs5PathKey),
                         CustomPs7Path = GetStringOrNull(values, CustomPs7PathKey),
                         CustomEditorPath = GetStringOrNull(values, CustomEditorPathKey),
+                        RuleMatchSize = GetBool(values, RuleMatchSizeKey, AppSettings.Default.RuleMatchSize),
+                        RuleMatchModifiedTime = GetBool(values, RuleMatchModifiedTimeKey, AppSettings.Default.RuleMatchModifiedTime),
+                        RuleMatchHash = GetBool(values, RuleMatchHashKey, AppSettings.Default.RuleMatchHash),
                     },
                 };
 
-                if (!hasVersion && importLegacySettings)
+                if (state.Version != AppState.CurrentVersion)
                 {
-                    // 旧版 config.json（无版本号）：把 settings.json 的内容并进来，再补写版本号
-                    var imported = TryReadLegacySettings(legacyFile);
-                    state = state with
-                    {
-                        Version = AppState.CurrentVersion,
-                        Settings = imported ?? state.Settings,
-                    };
-
-                    var saved = TrySave(filePath, state);
-                    DiagnosticsLog.Info(
-                        "配置文件缺少版本号，已补写 Version=" + AppState.CurrentVersion.ToString(CultureInfo.InvariantCulture)
-                        + (imported is null
-                            ? string.Empty
-                            : "，并合并旧设置文件 " + legacyFile
-                              + (saved && TryDeleteLegacySettings(legacyFile) ? "（原文件已删除）" : "（原文件保留：配置写入或删除失败）"))
-                        + "：" + filePath);
-                }
-                else if (importLegacySettings && File.Exists(legacyFile))
-                {
-                    // 已有版本号说明迁移已完成，清掉上次保留的旧文件；
-                    // 删除失败不影响本次读取，下次启动会再试。
-                    TryDeleteLegacySettings(legacyFile, "旧设置文件已迁移过，清理残留");
+                    DiagnosticsLog.Warn(
+                        "配置文件版本不是 " + AppState.CurrentVersion.ToString(CultureInfo.InvariantCulture)
+                        + "，已按当前默认值补齐并重写：" + filePath);
+                    state = state with { Version = AppState.CurrentVersion };
+                    TrySave(filePath, state);
                 }
 
                 return state;
@@ -175,6 +139,9 @@ namespace Ps1Run.Core.Configuration
             values[LogDaysKey] = config.LogDays.ToString(CultureInfo.InvariantCulture);
             values[ThemeKey] = config.Theme.ToString();
             values[LanguageKey] = config.Language;
+            values[RuleMatchSizeKey] = Number(settings.RuleMatchSize);
+            values[RuleMatchModifiedTimeKey] = Number(settings.RuleMatchModifiedTime);
+            values[RuleMatchHashKey] = Number(settings.RuleMatchHash);
 
             WriteValues(filePath, values);
         }
@@ -187,7 +154,7 @@ namespace Ps1Run.Core.Configuration
             return recovered;
         }
 
-        /// <summary>尝试写盘；返回 false 时调用方必须保留旧设置文件，避免迁移丢数据。</summary>
+        /// <summary>尝试写盘；返回 false 时调用方需自行处理（不阻断启动）。</summary>
         private static bool TrySave(string filePath, AppState state)
         {
             try
@@ -197,12 +164,12 @@ namespace Ps1Run.Core.Configuration
             }
             catch (IOException ex)
             {
-                DiagnosticsLog.Warn("生成默认 config.json 失败：" + ex.Message);
+                DiagnosticsLog.Warn("生成默认 config.lang 失败：" + ex.Message);
                 return false;
             }
             catch (UnauthorizedAccessException ex)
             {
-                DiagnosticsLog.Warn("生成默认 config.json 失败：" + ex.Message);
+                DiagnosticsLog.Warn("生成默认 config.lang 失败：" + ex.Message);
                 return false;
             }
         }
@@ -220,7 +187,7 @@ namespace Ps1Run.Core.Configuration
                 var backup = filePath + ".bad." + stamp;
                 File.Copy(filePath, backup, overwrite: false);
                 DiagnosticsLog.Warn(
-                    "config.json 损坏，已备份并重建默认值：file=" + filePath
+                    "config.lang 损坏，已备份并重建默认值：file=" + filePath
                     + " backup=" + backup + " reason=" + reason);
             }
             catch (IOException)
@@ -241,7 +208,7 @@ namespace Ps1Run.Core.Configuration
                     return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 }
 
-                return SimpleJson.ParseObject(File.ReadAllText(filePath, Encoding.UTF8));
+                return KeyValueTextParser.Parse(File.ReadAllText(filePath, Encoding.UTF8));
             }
             catch (IOException)
             {
@@ -260,7 +227,6 @@ namespace Ps1Run.Core.Configuration
         private static void WriteValues(string filePath, Dictionary<string, string> values)
         {
             var builder = new StringBuilder();
-            builder.AppendLine("{");
 
             var written = new List<string>(CanonicalOrder.Length);
             foreach (var key in CanonicalOrder)
@@ -284,17 +250,10 @@ namespace Ps1Run.Core.Configuration
             extras.Sort(StringComparer.OrdinalIgnoreCase);
             written.AddRange(extras);
 
-            for (var i = 0; i < written.Count; i++)
+            foreach (var key in written)
             {
-                var key = written[i];
-                builder.Append("  ")
-                    .Append(SimpleJson.Quote(key))
-                    .Append(": ")
-                    .Append(FormatValue(key, values[key]))
-                    .AppendLine(i == written.Count - 1 ? string.Empty : ",");
+                builder.Append(KeyValueTextParser.FormatLine(key, FormatValue(key, values[key])));
             }
-
-            builder.AppendLine("}");
 
             var directory = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(directory))
@@ -315,96 +274,50 @@ namespace Ps1Run.Core.Configuration
             }
         }
 
-        /// <summary>数字字段不加引号，其余一律写成 JSON 字符串。</summary>
+        /// <summary>数字字段不加引号，其余一律写成文本字符串。</summary>
         private static string FormatValue(string key, string value)
         {
             if (string.Equals(key, VersionKey, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(key, LogDaysKey, StringComparison.OrdinalIgnoreCase))
+                || string.Equals(key, LogDaysKey, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, RuleMatchSizeKey, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, RuleMatchModifiedTimeKey, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(key, RuleMatchHashKey, StringComparison.OrdinalIgnoreCase))
             {
                 return value;
             }
 
-            return SimpleJson.Quote(value ?? string.Empty);
+            return KeyValueTextParser.Quote(value ?? string.Empty);
         }
 
-        /// <summary>合并成功后删除旧设置文件；删除失败只记日志，不影响启动。</summary>
-        private static bool TryDeleteLegacySettings(string filePath, string? reason = null)
-        {
-            try
-            {
-                if (!File.Exists(filePath))
-                {
-                    return false;
-                }
-
-                File.Delete(filePath);
-                DiagnosticsLog.Info(
-                    (reason ?? "旧设置文件已成功合并，删除原文件") + "：" + filePath);
-                return true;
-            }
-            catch (IOException ex)
-            {
-                DiagnosticsLog.Warn("删除旧设置文件失败（下次启动会重试）：" + ex.Message);
-                return false;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                DiagnosticsLog.Warn("删除旧设置文件失败（下次启动会重试）：" + ex.Message);
-                return false;
-            }
-        }
-
-        /// <summary>读取旧版 settings.json（只解析，不迁移、不删除）。</summary>
-        private static AppSettings? TryReadLegacySettings(string filePath)
-        {
-            try
-            {
-                if (!File.Exists(filePath))
-                {
-                    return null;
-                }
-
-                var values = SimpleJson.ParseObject(File.ReadAllText(filePath, Encoding.UTF8));
-                if (values.Count == 0)
-                {
-                    return null;
-                }
-
-                return new AppSettings
-                {
-                    RunMode = GetEnum(values, RunModeKey, AppSettings.Default.RunMode),
-                    PowerShellPolicy = GetEnum(values, PowerShellPolicyKey, AppSettings.Default.PowerShellPolicy),
-                    CustomPs5Path = GetStringOrNull(values, CustomPs5PathKey),
-                    CustomPs7Path = GetStringOrNull(values, CustomPs7PathKey),
-                    CustomEditorPath = GetStringOrNull(values, CustomEditorPathKey),
-                };
-            }
-            catch (IOException ex)
-            {
-                DiagnosticsLog.Warn("读取旧设置文件失败：" + ex.Message);
-                return null;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                DiagnosticsLog.Warn("读取旧设置文件失败：" + ex.Message);
-                return null;
-            }
-            catch (FormatException ex)
-            {
-                DiagnosticsLog.Warn("旧设置文件格式非法，已忽略：" + ex.Message);
-                return null;
-            }
-        }
+        private static string Number(bool value) => value ? "1" : "0";
 
         private static int GetInt(Dictionary<string, string> values, string key, int fallback)
         {
-            if (values.TryGetValue(key, out var raw))
+            if (values.TryGetValue(key, out var raw)
+                && int.TryParse(raw.Trim().Trim('"'), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
             {
-                var text = raw.Trim().Trim('"');
-                if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
-                {
-                    return parsed;
-                }
+                return parsed;
+            }
+
+            return fallback;
+        }
+
+        private static bool GetBool(Dictionary<string, string> values, string key, bool fallback)
+        {
+            if (!values.TryGetValue(key, out var raw))
+            {
+                return fallback;
+            }
+
+            var text = raw.Trim().Trim('"');
+            if (text == "1" || string.Equals(text, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (text == "0" || string.Equals(text, "false", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
             }
 
             return fallback;
@@ -432,13 +345,10 @@ namespace Ps1Run.Core.Configuration
         private static T GetEnum<T>(Dictionary<string, string> values, string key, T fallback)
             where T : struct
         {
-            if (values.TryGetValue(key, out var raw))
+            if (values.TryGetValue(key, out var raw)
+                && Enum.TryParse<T>(raw.Trim().Trim('"'), ignoreCase: true, out var parsed))
             {
-                var text = raw.Trim().Trim('"');
-                if (Enum.TryParse<T>(text, ignoreCase: true, out var parsed))
-                {
-                    return parsed;
-                }
+                return parsed;
             }
 
             return fallback;

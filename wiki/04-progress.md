@@ -1,6 +1,6 @@
 # 04 项目进度与差距
 
-> 状态横幅：本页是项目进度的唯一真源。编制于 2026-11-24，同日根据代码实现更新。当前 **45 个功能点中 42 个代码完成、3 个部分实现**，M0–M5 主体收口；双目标构建通过、7/7 组自动化测试通过。剩余为需要真实桌面交互的系统级验收，以及设计稿中描述但尚未落地的 6 项增强（D16–D21）。功能级状态见 [02 功能实现清单](02-feature-matrix.md)。
+> 状态横幅：本页是项目进度的唯一真源。编制于 2026-11-24，同日根据代码实现更新。当前 **45 个功能点中 42 个代码完成、3 个部分实现**，M0–M5 主体收口；双目标构建通过、8/8 组自动化测试通过。剩余为需要真实桌面交互的系统级验收，以及设计稿中描述但尚未落地的 6 项增强（D16–D21）。功能级状态见 [02 功能实现清单](02-feature-matrix.md)。
 
 ---
 
@@ -14,11 +14,11 @@
 | 代码行数 | 约 7094 行（不含 `obj/`、`bin/`、`Build/`、`.workbuddy/`） |
 | 可运行产物 | 2：`Build\net48\Ps1Run.exe`、`Build\net11.0-windows\Ps1Run.dll` |
 | 构建结果 | `dotnet build Ps1Run.slnx`：**0 警告 0 错误** |
-| 自动化测试 | `Ps1Run.Core.Tests`：**7/7 组通过**（编码判型、参数解析、解释器探测、设置持久化、日志写入与保留、程序配置、多语言资源） |
+| 自动化测试 | `Ps1Run.Core.Tests`：**8/8 组通过**（编码判型、参数解析、解释器探测、设置持久化、日志写入与保留、程序配置、多语言资源） |
 | 资源 | `icon.ico`（多尺寸软件 logo）已内嵌为 exe 图标与窗口图标，DefaultIcon 指向 exe；旧 `ps1.ico` 已移除 |
-| 日志 | `<软件根目录>\log\yyyyMMdd.log`：分级、会话 ID、进程 ID、退出码；保留天数取 `config.json` 的 `LogDays`（默认 7），每天首次运行清理一次；主界面可打开目录/查看/复制 |
-| 程序配置 | `<软件根目录>\config.json`：`LogDays` / `Theme` / `Language`，首次运行生成 |
-| 多语言 | `<软件根目录>\lang\*.json`：缺省生成 `zh-cn.json`，随程序附带 `en-us.json`，下拉即时切换 |
+| 日志 | `<软件根目录>\log\yyyyMMdd.log`：分级、会话 ID、进程 ID、退出码；保留天数取 `config.lang` 的 `LogDays`（默认 7），每天首次运行清理一次；主界面可打开目录/查看/复制 |
+| 程序配置 | `<软件根目录>\config.lang`：`LogDays` / `Theme` / `Language`，首次运行生成 |
+| 多语言 | `<软件根目录>\lang\*.lang`：缺省生成 `zh-cn.lang`，随程序附带 `en-us.lang`，下拉即时切换 |
 | 文档 | 13 页（本 wiki），已交付并同步至当前代码状态 |
 | **代码完成度** | **93%（42/45）**，另有 3 项部分实现 |
 | **完整验收完成度** | **0/45**（系统级验收未自动执行） |
@@ -33,7 +33,7 @@
 | 里程碑 | 内容 | 状态 | 产出物 / 验收 |
 |---|---|---|---|
 | **M0 现状调研与设计** | 环境核实、技术约束验证、双版本探针、wiki 编写 | ✅ 已完成（2026-11-24） | 本 wiki 13 页；探针工程在 `work\probe\` |
-| **M1 内核骨架** | 建解决方案与三个工程；`AppSettings`/`SettingsStore`；`CommandLineOptions`；分级日志 | 🔵 代码完成 | 双目标构建通过；设置 JSON 往返与损坏恢复、日志写入/保留已单测 |
+| **M1 内核骨架** | 建解决方案与三个工程；`AppSettings`/`SettingsStore`；`CommandLineOptions`；分级日志 | 🔵 代码完成 | 双目标构建通过；设置键值文本往返与损坏恢复、日志写入/保留已单测 |
 | **M2 探测能力** | `PowerShellLocator`、`ScriptEncodingDetector`、`EditorLocator` | 🔵 代码完成 | 编码判型 6 类、PS5/PS7 探测已单测；编辑器实机命中待确认 |
 | **M3 分发链路** | `LaunchDispatcher` + 无窗口直通模式 + 选择窗 | 🔵 代码完成 | 参数解析已单测；命令行 `--run`/`--edit`/`--ask` 手工验证未做 |
 | **M4 关联注册** | `AssociationService` 注册/注销/状态；UserChoice 提示 | 🔵 代码完成 | 含 HKLM 提升与系统"打开方式"引导；注册表实机验证待人工执行 |
@@ -56,13 +56,13 @@
 | D7 | R7 双版本评估 | ✅ 已给出结论，正式工程双目标构建通过 | 无 | — | [09](09-eval-dual-target-framework.md) |
 | D8 | R8 常驻评估 | ✅ 已给出结论 | 无 | — | [10](10-eval-background-residency.md) |
 | D9 | 工程脚手架 | ✅ `Ps1Run.slnx` + 三工程 + `Directory.Build.props`，构建通过 | 无 | — | [03](03-project-structure.md) |
-| D10 | 单元测试 | ✅ `Ps1Run.Core.Tests` 7/7 组通过（编码判型、参数解析、解释器探测、设置持久化、日志写入与保留、程序配置、多语言资源） | 无（UI 与注册表交互不在自动化范围） | — | [03](03-project-structure.md#3-规划目录树) |
+| D10 | 单元测试 | ✅ `Ps1Run.Core.Tests` 8/8 组通过（编码判型、参数解析、解释器探测、设置持久化、日志写入与保留、程序配置、多语言资源） | 无（UI 与注册表交互不在自动化范围） | — | [03](03-project-structure.md#3-规划目录树) |
 | D11 | 图标资源 | ✅ `icon.ico`（16~256 多尺寸）已设为 exe 图标与窗口图标，DefaultIcon 指向 exe | 无 | — | [03](03-project-structure.md#3-规划目录树) |
 | D12 | 安装/卸载体验 | 主界面已提供用户级/机器级注册注销与系统默认程序入口 | 仍无独立安装包或一键安装脚本 | 低 | F1.7 |
 | D13 | 全局异常处理 | ✅ `DispatcherUnhandledException` 已接线 | 无 | — | F6.3 |
 | D14 | 设置格式与即时生效 | ✅ JSON 持久化 + 变更自动保存 | 无 | — | F5.2、R2 |
 | D15 | 机器级注册与系统对话框 | ✅ ElevationHelper + HKLM 参数 + SHOpenWithDialog 均已接线 | 无 | — | F1.7、F1.9 |
-| D16 | 关联回滚备份 | 注销只删自有 ProgId 与 `OpenWithProgids` 声明；未写 `.ps1\(默认)` 原值，也无 `association-backup.json` | R1 中"完整回滚到注册前状态"的严格口径未达成；需写前快照、注销时按快照恢复 | 高（验收） | F1.8 |
+| D16 | 关联回滚备份 | 注销只删自有 ProgId 与 `OpenWithProgids` 声明；未写 `.ps1\(默认)` 原值，也无 `association-backup.lang（预留）` | R1 中"完整回滚到注册前状态"的严格口径未达成；需写前快照、注销时按快照恢复 | 高（验收） | F1.8 |
 | D17 | UserChoice 高级移除 | C 方案（删除当前选择）与"高级：移除当前选择"按钮仅为设计 | 06 页的 C 方案、备份 Hash 恢复均未实现；当前只做合规引导 | 中（设计） | F1.6、F1.7 |
 | D18 | 注册临界区互斥量 | 无 `Global\Ps1Run.Association` 互斥量 | 05 §9 / 10 §4.3 中描述的保护未实现；并发注册可能交叉 | 中（设计） | F1.1–F1.9 |
 | D19 | PS7 Store 版探测 | 探测链止于 PATH；WindowsApps 分支未实现 | Store 版 PowerShell 7 无法被自动发现 | 中 | F3.2 |
@@ -89,7 +89,7 @@
 
 | 风险 | 等级 | 说明 | 应对 |
 |---|---|---|---|
-| 系统级验收未执行 | **高** | 核心逻辑已通过 7/7 组单测，但注册表变更、双击分发、多屏弹窗尚未在真实桌面执行 | 按 §4 顺序人工验收 |
+| 系统级验收未执行 | **高** | 核心逻辑已通过 8/8 组单测，但注册表变更、双击分发、多屏弹窗尚未在真实桌面执行 | 按 §4 顺序人工验收 |
 | 设计稿与代码仍有落差 | 中 | D16–D21 描述的行为尚未落地，其中 D16 影响 R1 的"完整回滚"严格口径 | 按 §4 第 4 项处理，处理前不得在文档写成已实现 |
 | UserChoice 哈希墙 | **高** | Windows 不允许程序直接改默认程序；写错 Hash 会被 Explorer 重置。本机 `ProgId=VSCode.ps1`、`Hash=aBi9Z4VDA20=` | 只做 ProgId + OpenWithProgids 注册，配合 `SHOpenWithDialog` / `ms-settings:defaultapps` 引导用户确认，见 [06](06-tech-file-association.md#3-userchoice-这道墙) |
 | HKLM 写入权限 | 中 | 实测 `HKLM\Software\Classes` 打开可写句柄抛 "Requested registry access is not allowed." | 默认 HKCU；HKLM 作为可选并显式提示需管理员 |
@@ -110,7 +110,7 @@
 |---|---|---|
 | 仓库现状（更新） | 递归枚举仓库根（排除 obj/bin/Build/.workbuddy） | 93 个工程/资源文件（含 wiki 图片与脚本），57 个 C#/XAML，约 7094 行 |
 | 正式工程双目标构建 | `dotnet build Ps1Run.slnx` | 成功，0 警告 0 错误；产出 net48 与 net11.0-windows 两份产物 |
-| 自动化测试 | `dotnet run --project Ps1Run.Core.Tests` | 7/7 组通过：编码判型、参数解析、解释器探测、设置持久化、日志写入与保留、程序配置、多语言资源 |
+| 自动化测试 | `dotnet run --project Ps1Run.Core.Tests` | 8/8 组通过：编码判型、参数解析、解释器探测、设置持久化、日志写入与保留、程序配置、多语言资源 |
 | 构建配置修复 | 修正 `Ps1Run.App.csproj` 与 `Directory.Build.props` | MSB4025（`<tfm>` 非法 XML）与 CS0006（双目标共用中间目录）均已消除 |
 | 双目标可行性（M0） | `work\probe\dual` 探针工程 | 构建成功，0 警告 0 错误 |
 | record/init 兼容 | 探针 + 正式工程 | net48 报 CS0518，加垫片后通过 |
@@ -133,22 +133,22 @@
 | 2026-11-24 | 代码实现同步 | M1–M5 主体代码落地；引入 🔵「代码完成待验收」状态，28/35 代码写完，仍无功能通过验收（历史节点，当前口径为 35/38 🔵） |
 | 2026-11-24 | 构建修复 | 删除 `Ps1Run.App.csproj` 中非法的 `<tfm>` 占位符；恢复 SDK 默认 TFM 目录追加，双目标构建 0 警告 0 错误 |
 | 2026-11-24 | 剩余功能补齐 | 实现 F1.7 / F1.9 / F2.4 / F2.6 / F3.6 / F6.3；设置改 JSON + 自动保存；新增 `ps1.ico` 与 `Ps1Run.Core.Tests`，35/35 功能点代码完成 |
-| 2026-11-24 | 主界面布局与一键探测 | 底部按钮改为 `WrapPanel` 自动换行并按功能分组，消除叠加；新增独立「自动探测」行，一键按 wiki 07 §3 / 08 §4 探测链识别 PS5、PS7、编辑器并回填设置；双目标构建与 4/4 组单测通过（历史节点，当前 7/7） |
-| 2026-11-24 | 增加 scripts 目录 | 新增 `run.ps1` 与三个构建入口 `build-all.ps1` / `build-net48.ps1` / `build-net11.ps1`，共用 `build-common.ps1` 统一退出码与编码；三个入口均实测退出码 0，`-Test` 联动 4/4 组单测（历史节点，当前 7/7） |
-| 2026-11-24 | icon.ico 设为软件 logo | 用多尺寸 `icon.ico` 取代单尺寸 `ps1.ico`（旧文件已删除）：经 `<ApplicationIcon>` 内嵌为 exe 图标、经 `<Resource>` 作为主界面与选择窗图标，文件关联 `DefaultIcon` 改为指向 exe（`",0"`）；字节校验确认两个 exe 均含新图标数据，双目标构建 0 警告 0 错误、单测 4/4（历史节点，当前 7/7） |
+| 2026-11-24 | 主界面布局与一键探测 | 底部按钮改为 `WrapPanel` 自动换行并按功能分组，消除叠加；新增独立「自动探测」行，一键按 wiki 07 §3 / 08 §4 探测链识别 PS5、PS7、编辑器并回填设置；双目标构建与 4/4 组单测通过（历史节点，当前 8/8） |
+| 2026-11-24 | 增加 scripts 目录 | 新增 `run.ps1` 与三个构建入口 `build-all.ps1` / `build-net48.ps1` / `build-net11.ps1`，共用 `build-common.ps1` 统一退出码与编码；三个入口均实测退出码 0，`-Test` 联动 4/4 组单测（历史节点，当前 8/8） |
+| 2026-11-24 | icon.ico 设为软件 logo | 用多尺寸 `icon.ico` 取代单尺寸 `ps1.ico`（旧文件已删除）：经 `<ApplicationIcon>` 内嵌为 exe 图标、经 `<Resource>` 作为主界面与选择窗图标，文件关联 `DefaultIcon` 改为指向 exe（`",0"`）；字节校验确认两个 exe 均含新图标数据，双目标构建 0 警告 0 错误、单测 4/4（历史节点，当前 8/8） |
 | 2026-11-24 | 日志功能增强 | `DiagnosticsLog` 增加 DEBUG/INFO/WARN/ERROR 分级、会话 ID、进程 ID、异常摘要与 `ReadRecent()`；`App.OnStartup/OnExit` 接线开始/结束日志与 7 天清理；ProcessLauncher、SettingsStore、MainViewModel 补日志；主界面新增"打开日志目录/查看当日日志/复制最近日志"；新增第 5 组单测，5/5 通过 |
 | 2026-11-24 | wiki 状态审计与补缺 | 以代码为准重写 02/04 统计（38 项：35 🔵 / 3 🟨），登记 D16–D21 六项未落地设计；修正 01/03/05~12 的过期路径、错误命令、按钮清单、弹窗尺寸与状态横幅 |
 | 2026-11-24 | 修复启动时 XAML 图标解析崩溃 | 两个窗口原写 `Icon="icon.ico"`，WPF 按 XAML 目录解析成 `views/icon.ico` 导致 `TypeConverterMarkupExtension` 异常；改为 `pack://application:,,,/icon.ico`；net48/net11 × 主界面/Ask 弹窗 4 种组合启动验证通过 |
-| 2026-11-24 | 选择窗标识执行解释器 | 新增 `LaunchDispatcher.PreviewPowerShell()` 只读预判与 `PowerShellPreview`，经 `PickRequest` 传入弹窗；`PickerWindow` 增加 PS5/PS7 标签、版本标题、exe 与判定依据（固定策略/编码）、降级或缺失的橙色提醒；窗口高度 300→360；实测 UTF-8 BOM 脚本显示 PS7、GBK 脚本显示 PS5，构建 0 警告 0 错误、单测 5/5（历史节点，当前 7/7） |
-| 2026-11-25 | 项目迁至独立仓库 | 仓库根由 `tool-box\src\PS1Run` 迁至独立目录并初始化 git（3 次提交，`dist` 已产出 0.1.0 包）；迁移后双目标构建 0 警告 0 错误、单测 7/7 通过 |
-| 2026-11-25 | 主界面改为三页签 | `MainWindow` 由单页 7 行 `Grid` + 底部 12 个按钮的 `WrapPanel` 改为「标题栏 + `TabControl` + 底部状态条」：常规 / 文件关联 / 诊断与日志。标题栏新增常驻关联徽标（未注册 / 部分注册 / 已注册），由 `AssociationBadgeState` 驱动；文件关联页新增状态卡片（三动词、扩展声明、程序路径、UserChoice 高亮）；日志与设置文件路径迁入诊断页；「保存设置」降为诊断页的手动重试入口，底部只留"更改即时生效"与关闭。页签与徽标样式定义在 `MainWindow.xaml` 的 `Window.Resources`，新增 16 条中英文案（`DefaultStrings` + `lang\en-us.json`）。构建 0 警告 0 错误、单测 7/7 |
+| 2026-11-24 | 选择窗标识执行解释器 | 新增 `LaunchDispatcher.PreviewPowerShell()` 只读预判与 `PowerShellPreview`，经 `PickRequest` 传入弹窗；`PickerWindow` 增加 PS5/PS7 标签、版本标题、exe 与判定依据（固定策略/编码）、降级或缺失的橙色提醒；窗口高度 300→360；实测 UTF-8 BOM 脚本显示 PS7、GBK 脚本显示 PS5，构建 0 警告 0 错误、单测 5/5（历史节点，当前 8/8） |
+| 2026-11-25 | 项目迁至独立仓库 | 仓库根由 `tool-box\src\PS1Run` 迁至独立目录并初始化 git（3 次提交，`dist` 已产出 0.1.0 包）；迁移后双目标构建 0 警告 0 错误、单测 8/8 通过 |
+| 2026-11-25 | 主界面改为三页签 | `MainWindow` 由单页 7 行 `Grid` + 底部 12 个按钮的 `WrapPanel` 改为「标题栏 + `TabControl` + 底部状态条」：常规 / 文件关联 / 诊断与日志。标题栏新增常驻关联徽标（未注册 / 部分注册 / 已注册），由 `AssociationBadgeState` 驱动；文件关联页新增状态卡片（三动词、扩展声明、程序路径、UserChoice 高亮）；日志与设置文件路径迁入诊断页；「保存设置」降为诊断页的手动重试入口，底部只留"更改即时生效"与关闭。页签与徽标样式定义在 `MainWindow.xaml` 的 `Window.Resources`，新增 16 条中英文案（`DefaultStrings` + `lang\en-us.lang`）。构建 0 警告 0 错误、单测 8/8 |
 | 2026-11-25 | 文档路径改为相对仓库根 | wiki 与 README 中不再出现 `F:\Code\PS1Run` 之类绝对路径，统一写作相对仓库根（`Ps1Run.App\...`、`scripts\...`、`Build\net48\...`），并在 [index](index.md) 增加「路径约定」说明；`11` 的重建脚本改为 `$root = (Resolve-Path '.').Path` |
-| 2026-11-25 | 主界面页签再调整 | 编辑器并入「执行程序」分组（PS5 / PS7 / 编辑器三行，`App.Separator` 分隔），分组标题改「执行程序与编辑器」；外观与语言移入「诊断与日志」页签（日志分组之后）。`AutoDetect()` 由"命中即覆盖"改为"只补空缺"：已配置且文件存在的 PS5 / PS7 / 编辑器保留原值并在探测结果里标注「保留原设置，未修改」，空值或失效路径才回填探测结果；新增 `Main.Detection.Kept` 文案，`Main.Detection.Idle` 补充说明。构建 0 警告 0 错误、单测 7/7；浅色中英文离屏渲染核对三页签布局 |
-| 2026-11-25 | 配置文件二合一 | `settings.json` 与 `config.json` 合并为软件根目录唯一 `config.json`：新增 `AppState`（Version + 运行设置 + 程序配置）与 `ConfigDocument`（统一读改写、原子写入、损坏备份、保留未知键），`SettingsStore`/`ConfigStore` 变为同一文件的读写门面、互不覆盖；旧 `%APPDATA%\Ps1Run\settings.json` 首次读取时一次性合并（当时保留原文件，后续改为合并成功后删除）；缺 `Version` 的旧文件读取时补写版本号。实测旧三字段 config.json 自动升级并合并旧设置。构建 0 警告 0 错误、单测 7/7（新增「合并为同一文件」用例） |
-| 2026-11-25 | 移除诊断信息 + 页签改名 | 删除「诊断信息」分组与「刷新状态 / 复制诊断信息」按钮（信息与文件关联页、日志页、配置文件页重复），状态反馈改为窗口底部单行（无反馈时提示「更改即时生效」）；页签「诊断与日志」改名「日志与外观」；「设置与配置文件」改为「配置文件与版本」，只显示一份配置文件路径 + 程序版本 + 语言包版本；清理 20 余条失效中英文案。构建 0 警告 0 错误、单测 7/7 |
-| 2026-11-25 | 语言包版本号与提醒 | 语言文件首行新增 `__version`（当前 1），加载时剔除、不作为文案；`zh-cn.json` 随程序发布并在缺失/无版本号/版本较旧时按内置文案重建（应用新版），其他语言包只读取、不覆盖（处理逻辑不变）；语言包缺版本号时：「日志与外观」页签挂「！」徽标、页内红字提醒 + 「重新生成 zh-cn.json」，选择窗显示红字说明。新增 `AppInfo`（程序版本）与 `Warning.*`/`Picker.PackWarning` 文案。构建 0 警告 0 错误、单测 7/7（新增语言包升级与缺版本号用例）；浅色/深色中英文离屏渲染核对徽标、红字与三页签布局 |
-| 2026-11-25 | 选择窗修复 + 旧设置文件清理 | ① `PickerWindow` 构造时先按主屏工作区预居中、`SourceInitialized` 再按鼠标所在屏居中，消除从左上角闪现；高度改为随内容自适应（`SizeToContent=Height`，行 `*` 改 `Auto`），多组红字提醒下按钮仍完整可见。② `PickRequest` 携带 `AppSettings`，`PickerViewModel` 检查 PS5/PS7/编辑器配置路径是否存在，失效或探测不到时在选择窗显示红字（新增 4 条中英文案）。③ `ConfigDocument` 合并旧 `settings.json` 成功后删除原文件（写盘失败则保留重试），已有版本号时发现残留也清理；新增可注入旧文件路径的单测。构建 0 警告 0 错误、单测 7/7；离屏实测首屏坐标 730/336（1920×1032 工作区），红字与三按钮均完整 |
-| 2026-11-24 | 配置 / 主题 / 多语言 | ① 日志改到 `<软件根目录>\log\yyyyMMdd.log`，保留天数取 `config.json` 的 `LogDays`，当天首次运行才清理；② 新增 `AppPaths`/`AppConfig`/`ConfigStore`（首次生成、原子写入、越界收敛、损坏备份），根目录不可写时三者一起退化到 `%APPDATA%\Ps1Run`；③ 新增 Light/Dark 主题字典与 `ThemeManager`（Auto 读 `AppsUseLightTheme`），主界面加"主题/语言/日志天数/配置文件"分组；④ 新增 `lang\*.json` 语言包、`LocalizationManager`、`{loc:T}` 绑定、`d:DesignText.Text` 设计期文本，语言下拉即时切换；⑤ 新增第 6/7 组单测，7/7 通过；浅色/深色 + 中英文截图验证，进程内探针确认切换后已绑定文案立即更新且无自激 |
+| 2026-11-25 | 主界面页签再调整 | 编辑器并入「执行程序」分组（PS5 / PS7 / 编辑器三行，`App.Separator` 分隔），分组标题改「执行程序与编辑器」；外观与语言移入「诊断与日志」页签（日志分组之后）。`AutoDetect()` 由"命中即覆盖"改为"只补空缺"：已配置且文件存在的 PS5 / PS7 / 编辑器保留原值并在探测结果里标注「保留原设置，未修改」，空值或失效路径才回填探测结果；新增 `Main.Detection.Kept` 文案，`Main.Detection.Idle` 补充说明。构建 0 警告 0 错误、单测 8/8；浅色中英文离屏渲染核对三页签布局 |
+| 2026-11-25 | 配置文件二合一 | `settings.json` 与 `config.lang` 合并为软件根目录唯一 `config.lang`：新增 `AppState`（Version + 运行设置 + 程序配置）与 `ConfigDocument`（统一读改写、原子写入、损坏备份、保留未知键），`SettingsStore`/`ConfigStore` 变为同一文件的读写门面、互不覆盖；旧 `%APPDATA%\Ps1Run\settings.json` 首次读取时一次性合并（当时保留原文件，后续改为合并成功后删除）；缺 `Version` 的旧文件读取时补写版本号。实测旧三字段 config.lang 自动升级并合并旧设置。构建 0 警告 0 错误、单测 8/8（新增「合并为同一文件」用例） |
+| 2026-11-25 | 移除诊断信息 + 页签改名 | 删除「诊断信息」分组与「刷新状态 / 复制诊断信息」按钮（信息与文件关联页、日志页、配置文件页重复），状态反馈改为窗口底部单行（无反馈时提示「更改即时生效」）；页签「诊断与日志」改名「日志与外观」；「设置与配置文件」改为「配置文件与版本」，只显示一份配置文件路径 + 程序版本 + 语言包版本；清理 20 余条失效中英文案。构建 0 警告 0 错误、单测 8/8 |
+| 2026-11-25 | 语言包版本号与提醒 | 语言文件首行新增 `Version`（当前 2），加载时剔除、不作为文案；`zh-cn.lang` 随程序发布并在缺失/无版本号/版本较旧时按内置文案重建（应用新版），其他语言包只读取、不覆盖（处理逻辑不变）；语言包缺版本号时：「日志与外观」页签挂「！」徽标、页内红字提醒 + 「重新生成 zh-cn.lang」，选择窗显示红字说明。新增 `AppInfo`（程序版本）与 `Warning.*`/`Picker.PackWarning` 文案。构建 0 警告 0 错误、单测 8/8（新增语言包升级与缺版本号用例）；浅色/深色中英文离屏渲染核对徽标、红字与三页签布局 |
+| 2026-11-25 | 选择窗修复 + 旧设置文件清理 | ① `PickerWindow` 构造时先按主屏工作区预居中、`SourceInitialized` 再按鼠标所在屏居中，消除从左上角闪现；高度改为随内容自适应（`SizeToContent=Height`，行 `*` 改 `Auto`），多组红字提醒下按钮仍完整可见。② `PickRequest` 携带 `AppSettings`，`PickerViewModel` 检查 PS5/PS7/编辑器配置路径是否存在，失效或探测不到时在选择窗显示红字（新增 4 条中英文案）。③ `ConfigDocument` 合并旧 `settings.json` 成功后删除原文件（写盘失败则保留重试），已有版本号时发现残留也清理；新增可注入旧文件路径的单测。构建 0 警告 0 错误、单测 8/8；离屏实测首屏坐标 730/336（1920×1032 工作区），红字与三按钮均完整 |
+| 2026-11-24 | 配置 / 主题 / 多语言 | ① 日志改到 `<软件根目录>\log\yyyyMMdd.log`，保留天数取 `config.lang` 的 `LogDays`，当天首次运行才清理；② 新增 `AppPaths`/`AppConfig`/`ConfigStore`（首次生成、原子写入、越界收敛、损坏备份），根目录不可写时三者一起退化到 `%APPDATA%\Ps1Run`；③ 新增 Light/Dark 主题字典与 `ThemeManager`（Auto 读 `AppsUseLightTheme`），主界面加"主题/语言/日志天数/配置文件"分组；④ 新增 `lang\*.lang` 语言包、`LocalizationManager`、`{loc:T}` 绑定、`d:DesignText.Text` 设计期文本，语言下拉即时切换；⑤ 新增第 6/7 组单测，8/8 通过；浅色/深色 + 中英文截图验证，进程内探针确认切换后已绑定文案立即更新且无自激 |
 
 ---
 

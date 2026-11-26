@@ -32,6 +32,13 @@ namespace Ps1Run.Core.Settings
 
         public string? CustomEditorPath { get; init; }
 
+        /// <summary>脚本规则匹配标准：文件路径始终参与匹配，以下三项可配置。</summary>
+        public bool RuleMatchSize { get; init; } = true;
+
+        public bool RuleMatchModifiedTime { get; init; } = true;
+
+        public bool RuleMatchHash { get; init; }
+
         public static AppSettings Default { get; } = new AppSettings();
     }
 }
