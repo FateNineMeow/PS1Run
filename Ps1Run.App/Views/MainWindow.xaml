@@ -253,15 +253,20 @@
                             <StackPanel>
                                 <TextBlock Text="{loc:T Hint.RulePathAlways}" Margin="0,0,0,8"
                                            Foreground="{DynamicResource App.ForegroundSecondary}" TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    
                                 <CheckBox Content="{loc:T Label.RuleSize}" Margin="0,0,0,6"
                                           IsChecked="{Binding RuleMatchSize, Mode=TwoWay}" />
                                 <CheckBox Content="{loc:T Label.RuleModifiedTime}" Margin="0,0,0,6"
                                           IsChecked="{Binding RuleMatchModifiedTime, Mode=TwoWay}" />
+                                          </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                 <CheckBox Content="{loc:T Label.RuleHash}"
                                           IsChecked="{Binding RuleMatchHash, Mode=TwoWay}" />
                                 <TextBlock Text="{loc:T Hint.RuleHash}" Margin="0,6,0,0"
                                            FontSize="11" Foreground="{DynamicResource App.ForegroundMuted}"
                                            TextWrapping="Wrap" />
+                                                     </StackPanel>
                             </StackPanel>
                         </GroupBox>
 
