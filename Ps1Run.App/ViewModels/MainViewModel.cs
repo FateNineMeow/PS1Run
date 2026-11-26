@@ -87,6 +87,11 @@ namespace Ps1Run.App.ViewModels
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
+        /// <summary>
+        /// 语言选择已变更并写入配置（界面仍是旧语言，重启后生效）后触发，供视图询问是否重启应用。
+        /// </summary>
+        public event EventHandler? LanguageRestartRequested;
+
         public string ExecutablePath => _associations.ExecutablePath;
 
         /// <summary>唯一的配置文件路径（程序配置与运行设置都在这里）。</summary>
@@ -99,6 +104,12 @@ namespace Ps1Run.App.ViewModels
         public string CurrentLogFile => DiagnosticsLog.CurrentLogFile;
 
         public IReadOnlyList<LanguageOption> Languages => _languages;
+
+        /// <summary>当前选中语言的显示名（语言自称），用于重启提示文案。</summary>
+        public string CurrentLanguageDisplayName =>
+            _languageIndex >= 0 && _languageIndex < _languages.Count
+                ? _languages[_languageIndex].DisplayName
+                : string.Empty;
 
         /// <summary>0=执行，1=编辑，2=选择（与 RunMode 枚举顺序一致）。</summary>
         public int RunModeIndex
@@ -154,7 +165,7 @@ namespace Ps1Run.App.ViewModels
             }
         }
 
-        /// <summary>语言下拉框索引，切换后立即重新加载 lang\&lt;code&gt;.json。</summary>
+        /// <summary>语言下拉框索引：切换只保存配置，不即时换语言；重启后生效，并询问是否重启。</summary>
         public int LanguageIndex
         {
             get => _languageIndex;
@@ -168,9 +179,10 @@ namespace Ps1Run.App.ViewModels
                 _languageIndex = value;
                 var code = _languages[value].Code;
                 UpdateConfig(_config with { Language = code });
-                LocalizationManager.Instance.Load(code);
-                RefreshStatus();
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(CurrentLanguageDisplayName));
+                // 不再动态加载新语言包：弹窗用当前语言提示，用户确认后重启才应用新语言。
+                LanguageRestartRequested?.Invoke(this, EventArgs.Empty);
             }
         }
 

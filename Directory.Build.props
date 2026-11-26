@@ -26,11 +26,11 @@
     会随之派生（这里显式写出，避免 SDK 把 InformationalVersion 追加源码版本后缀）。
   -->
   <PropertyGroup>
-    <Version>0.3.0</Version>
-    <AssemblyVersion>0.3.0.0</AssemblyVersion>
-    <FileVersion>0.3.0.0</FileVersion>
-    <InformationalVersion>0.3.0</InformationalVersion>
-    <!-- 不把源码提交号拼到 ProductVersion 后面，资源管理器里显示干净的 0.3.0 -->
+    <Version>0.3.1</Version>
+    <AssemblyVersion>0.3.1.0</AssemblyVersion>
+    <FileVersion>0.3.1.0</FileVersion>
+    <InformationalVersion>0.3.1</InformationalVersion>
+    <!-- 不把源码提交号拼到 ProductVersion 后面，资源管理器里显示干净的 0.3.1 -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 </Project>

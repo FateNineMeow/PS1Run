@@ -122,6 +122,8 @@ namespace Ps1Run.Core.Localization
                 ["Theme.Light"] = "浅色",
                 ["Theme.Dark"] = "深色",
                 ["Label.Language"] = "语言",
+                ["Dialog.RestartForLanguage"] = "语言已切换为 {0}。新语言将在重启应用后生效。是否立即重启？",
+                ["Dialog.RestartFailed"] = "无法自动重启应用，请手动关闭并重新打开。",
                 ["Label.LogDays"] = "日志保留天数",
                 ["Hint.LogDays"] = "每天首次运行自动清理更早的日志（1–365 天）。",
                 ["Button.PruneNow"] = "立即清理",

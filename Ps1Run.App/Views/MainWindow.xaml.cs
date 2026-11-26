@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using Ps1Run.App.Localization;
@@ -14,6 +16,7 @@ namespace Ps1Run.App.Views
         public MainWindow()
         {
             InitializeComponent();
+            DataContextChanged += OnDataContextChanged;
             Loaded += OnLoaded;
         }
 
@@ -33,6 +36,72 @@ namespace Ps1Run.App.Views
         }
 
         private MainViewModel? ViewModel => DataContext as MainViewModel;
+
+        private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (e.OldValue is MainViewModel oldVm)
+            {
+                oldVm.LanguageRestartRequested -= OnLanguageRestartRequested;
+            }
+
+            if (e.NewValue is MainViewModel newVm)
+            {
+                newVm.LanguageRestartRequested += OnLanguageRestartRequested;
+            }
+        }
+
+        /// <summary>语言切换后征询是否重启；界面不做即时换语言，提示中告知重启后将使用的新语言。</summary>
+        private void OnLanguageRestartRequested(object? sender, EventArgs e)
+        {
+            var vm = ViewModel;
+            if (vm is null)
+            {
+                return;
+            }
+
+            var message = string.Format(
+                CultureInfo.CurrentCulture,
+                LocalizationManager.Loc("Dialog.RestartForLanguage"),
+                vm.CurrentLanguageDisplayName);
+
+            if (MessageBox.Show(this, message, LocalizationManager.Loc("App.Title"),
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            if (!TryRestartApplication())
+            {
+                MessageBox.Show(this, LocalizationManager.Loc("Dialog.RestartFailed"),
+                    LocalizationManager.Loc("App.Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>拉起当前 exe 的新实例后关闭本进程；启动失败时保留当前窗口。</summary>
+        private static bool TryRestartApplication()
+        {
+            try
+            {
+                using var current = Process.GetCurrentProcess();
+                var exe = current.MainModule?.FileName;
+                if (string.IsNullOrWhiteSpace(exe))
+                {
+                    return false;
+                }
+
+                Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
+                Application.Current.Shutdown();
+                return true;
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                return false;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+        }
 
         private void OnSaveClick(object sender, RoutedEventArgs e) => ViewModel?.Save();
 
