@@ -60,32 +60,5 @@ namespace Ps1Run.Core.Associations
                 return new UserChoiceInfo(null, null, true);
             }
         }
-
-        /// <summary>给界面用的中文说明。</summary>
-        public static string Describe(UserChoiceInfo info)
-        {
-            if (info is null)
-            {
-                throw new ArgumentNullException(nameof(info));
-            }
-
-            if (info.ReadFailed)
-            {
-                return "无法读取 UserChoice（权限不足），默认程序状态未知。";
-            }
-
-            if (!info.HasOverride)
-            {
-                return "系统未记录 UserChoice，ProgId 关联可直接生效。";
-            }
-
-            if (info.PointsToUs)
-            {
-                return "系统默认程序已指向本程序。";
-            }
-
-            return "系统当前默认程序为 " + info.ProgId + "，本程序可能不生效；"
-                   + "请在“打开方式”中手动勾选并确认（不允许伪造 Hash）。";
-        }
     }
 }

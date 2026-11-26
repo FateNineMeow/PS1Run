@@ -455,9 +455,38 @@ namespace Ps1Run.App.ViewModels
             }
         }
 
-        /// <summary>关联页状态卡片：UserChoice 现状（可能压过 ProgId 关联）。</summary>
-        public string AssociationUserChoiceText =>
-            _associationStatus is null ? "—" : UserChoiceGuard.Describe(_associationStatus.UserChoice);
+        /// <summary>关联页状态卡片：UserChoice 现状（可能压过 ProgId 关联，文案跟随语言包）。</summary>
+        public string AssociationUserChoiceText
+        {
+            get
+            {
+                if (_associationStatus is null)
+                {
+                    return "—";
+                }
+
+                var info = _associationStatus.UserChoice;
+                if (info.ReadFailed)
+                {
+                    return L("Status.UserChoice.ReadFailed");
+                }
+
+                if (!info.HasOverride)
+                {
+                    return L("Status.UserChoice.None");
+                }
+
+                if (info.PointsToUs)
+                {
+                    return L("Status.UserChoice.PointsToUs");
+                }
+
+                return string.Format(
+                    CultureInfo.CurrentCulture,
+                    L("Status.UserChoice.Overridden"),
+                    info.ProgId ?? string.Empty);
+            }
+        }
 
         /// <summary>UserChoice 指向别的 ProgId 时，卡片上给出橙色提醒。</summary>
         public bool AssociationUserChoiceOverridden =>

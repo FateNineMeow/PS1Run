@@ -232,6 +232,10 @@ namespace Ps1Run.Core.Localization
                 ["Status.NotAdded"] = "未加入",
                 ["Status.ExecutablePath"] = "程序路径：",
                 ["Status.UserChoice"] = "UserChoice：",
+                ["Status.UserChoice.ReadFailed"] = "无法读取 UserChoice（权限不足），默认程序状态未知。",
+                ["Status.UserChoice.None"] = "系统未记录 UserChoice，ProgId 关联可直接生效。",
+                ["Status.UserChoice.PointsToUs"] = "系统默认程序已指向本程序。",
+                ["Status.UserChoice.Overridden"] = "系统当前默认程序为 {0}，本程序可能不生效；请在“打开方式”中手动勾选并确认（不允许伪造 Hash）。",
                 ["Status.LogDirectory"] = "日志目录：",
 
                 // 选择窗
